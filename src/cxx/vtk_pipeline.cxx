@@ -12,6 +12,8 @@
 
 #include "vtk_pipeline.h"
 
+#include <mpi.h>
+
 //
 // Create visualisation pipeline
 //
@@ -23,13 +25,20 @@
 vtkStandardNewMacro(vtkCPVTKPipeline);
 
 // Constructor and desctructor
-vtkCPVTKPipeline::vtkCPVTKPipeline(){this->OutputFrequency = 0;}
+vtkCPVTKPipeline::vtkCPVTKPipeline(){
+  this->OutputFrequency = 0;
+  this->MPIRank = 0;
+  this->MPISize = 1;
+}
 vtkCPVTKPipeline::~vtkCPVTKPipeline(){}
 
 // Set basic pipeline parameters
-void vtkCPVTKPipeline::SetVTKPipelineParameters(int outputFrequency, std::string& fileName) {
+void vtkCPVTKPipeline::SetVTKPipelineParameters(const int outputFrequency, const std::string& fileName,
+                                                const int mpiRank, const int mpiSize) {
   this->OutputFrequency = outputFrequency;
   this->FileName = fileName;
+  this->MPIRank = mpiRank;
+  this->MPISize = mpiSize;
 }
 
 // Callback function: work out if we should produce output for this call
@@ -88,6 +97,12 @@ int vtkCPVTKPipeline::CoProcess(vtkCPDataDescription* dataDescription) {
 
   vtkNew<vtkXMLPUnstructuredGridWriter> writer;
   writer->SetInputConnection(completeArrays->GetOutputPort());
+  // MPI decomposition
+  writer->SetNumberOfPieces(this->MPISize);
+  writer->SetStartPiece(this->MPIRank);
+  writer->SetEndPiece(this->MPIRank);
+  // Grid handed over to VTK does not contain ghost cells
+  writer->SetGhostLevel(0);
   std::ostringstream o;
   o << dataDescription->GetTimeStep();
   std::string name = this->FileName + o.str() + ".pvtu";

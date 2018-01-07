@@ -1,4 +1,5 @@
 #include <string>
+#include <mpi.h>
 
 #include <vtkCPAdaptorAPI.h>
 #include <vtkCPProcessor.h>
@@ -17,15 +18,28 @@
 
 extern "C" {
 
-  void coprocessor_initialize(const int visualisationFrequency, const char * outputFileName) {
+  void coprocessor_initialize(const int visualisationFrequency, const char * outputFileName,
+                              const int * mpi_fcomm) {
 
-    // Initialize Catalyst
-    vtkCPAdaptorAPI::CoProcessorInitialize();
+    // Check if the coprocessor has already been initialised, only clear out pipelines in that case
+    if (!vtkCPAdaptorAPI::GetCoProcessor()) {
+      vtkCPAdaptorAPI::CoProcessorInitialize();
+    }
+    else {
+      vtkCPAdaptorAPI::GetCoProcessor()->RemoveAllPipelines();
+    }
+
+    // Get a C communicator and find out rank and size
+    MPI_Comm mpi_ccomm = MPI_Comm_f2c(*mpi_fcomm);
+    int mpiSize = 1;
+    int mpiRank = 0;
+    MPI_Comm_rank(mpi_ccomm, &mpiRank);
+    MPI_Comm_size(mpi_ccomm, &mpiSize);
 
     // Create new visualisation pipeline object, initialise, and register it
     vtkSmartPointer<vtkCPVTKPipeline> pipeline = vtkSmartPointer<vtkCPVTKPipeline>::New();
     std::string outputFileNameString(outputFileName);
-    pipeline->SetVTKPipelineParameters(visualisationFrequency, outputFileNameString);
+    pipeline->SetVTKPipelineParameters(visualisationFrequency, outputFileNameString, mpiRank, mpiSize);
     vtkCPAdaptorAPI::GetCoProcessor()->AddPipeline(pipeline);
 
   }

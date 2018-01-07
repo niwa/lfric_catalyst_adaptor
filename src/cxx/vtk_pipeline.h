@@ -24,7 +24,8 @@ class vtkCPVTKPipeline : public vtkCPPipeline {
   virtual int CoProcess(vtkCPDataDescription* dataDescription);
 
   // Set basic parameters of the visualisation pipeline
-  virtual void SetVTKPipelineParameters(int outputFrequency, std::string& fileName);
+  virtual void SetVTKPipelineParameters(const int outputFrequency, const std::string& fileName,
+                                        const int mpiRank, const int mpiSize);
 
  protected:
   vtkCPVTKPipeline();
@@ -38,5 +39,8 @@ class vtkCPVTKPipeline : public vtkCPPipeline {
 
   int OutputFrequency;
   std::string FileName;
+  int MPIRank;
+  int MPISize;
+
 };
 #endif
