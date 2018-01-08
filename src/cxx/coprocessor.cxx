@@ -19,7 +19,7 @@
 extern "C" {
 
   void coprocessor_initialize(const int visualisationFrequency, const char * outputFileName,
-                              const int * mpi_fcomm) {
+                              const MPI_Comm mpi_comm) {
 
     // Check if the coprocessor has already been initialised, only clear out pipelines in that case
     if (!vtkCPAdaptorAPI::GetCoProcessor()) {
@@ -29,12 +29,11 @@ extern "C" {
       vtkCPAdaptorAPI::GetCoProcessor()->RemoveAllPipelines();
     }
 
-    // Get a C communicator and find out rank and size
-    MPI_Comm mpi_ccomm = MPI_Comm_f2c(*mpi_fcomm);
+    // Find out MPI rank and size to handle grid partitioning in VTK grid
     int mpiSize = 1;
     int mpiRank = 0;
-    MPI_Comm_rank(mpi_ccomm, &mpiRank);
-    MPI_Comm_size(mpi_ccomm, &mpiSize);
+    MPI_Comm_rank(mpi_comm, &mpiRank);
+    MPI_Comm_size(mpi_comm, &mpiSize);
 
     // Create new visualisation pipeline object, initialise, and register it
     vtkSmartPointer<vtkCPVTKPipeline> pipeline = vtkSmartPointer<vtkCPVTKPipeline>::New();
