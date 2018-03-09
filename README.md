@@ -1,7 +1,9 @@
 # catalyst_adaptor
 ParaView Catalyst adaptor example for a Fortran code
 
-To build this code, you will need to build and install the "Catalyst-v5.4.1-Base-Essentials-Extras-Rendering-Base" source code package on your system.
+This package builds a library for visualising simulation data with a simple VTK visualisation pipeline. The pipeline can be defined either in C++ or using a Python script.
+
+To build this code, you will need to build and install the "Catalyst-v5.4.1-Base-Enable-Python-Essentials-Extras-Rendering-Base" source code package on your system.
 
 Once this is done, build the code using CMake as follows:
 ```
