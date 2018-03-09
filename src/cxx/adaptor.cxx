@@ -6,18 +6,18 @@
 #include <vtkDoubleArray.h>
 #include <vtkCellType.h>
 #include <vtkCellData.h>
+#include <vtkUnsignedCharArray.h>
 
 //
 // Create Catalyst adaptor
 //
 
 // The purpose of the adaptor is to translate the simulation grid to
-// a VTK grid, and to make the simulation data available to VTK.
-// Fortran objects which are not directly accessible to C++ code.
-// The easiest way to do this is to use simple buffers to
-// move grid and data from to Catalyst. The implementation uses
-// VTK's smart pointers and stores the VTK grid and data to avoid scope
-// issues and memory leaks.
+// a VTK grid, and to make the simulation data available that is stored
+// in Fortran objects which are not directly accessible to C++ code.
+// The easiest way to do this is to use simple buffers to move grid and
+// data. The implementation uses VTK's smart pointers and stores the
+// VTK grid and data to avoid scope issues and memory leaks.
 
 extern "C" {
 
@@ -27,18 +27,28 @@ extern "C" {
   // npoints: number of vertices in grid
   // cell_points: point indices for each cell
   // ncells: number of cells in grid
+  // ghost_mask: mask array for ghost cells 
   void adaptor_creategrid(const double * point_coords, const long npoints,
-                          const long * cell_points, const long ncells) {
+                          const long * cell_points, const long ncells,
+                          const short * ghost_mask) {
 
     if (!vtkCPAdaptorAPI::GetCoProcessorData()) {
       vtkGenericWarningMacro("adaptor_creategrid: Unable to access CoProcessorData.");
       return;
     }
-
-    if(vtkCPAdaptorAPI::GetCoProcessorData()->GetNumberOfInputDescriptions() != 1) {
+    if (vtkCPAdaptorAPI::GetCoProcessorData()->GetNumberOfInputDescriptions() != 1) {
       vtkGenericWarningMacro("adaptor_creategrid: expected exactly 1 input description.");
       return;
     }
+    if (npoints < 1) {
+      vtkGenericWarningMacro("adaptor_creategrid: Invalid number provided for npoints:" << npoints);
+      return;
+    }
+    if (ncells < 1) {
+      vtkGenericWarningMacro("adaptor_creategrid: Invalid number provided for ncells:" << ncells);
+      return;
+    }
+
 
     // Create new grid
     vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -74,6 +84,21 @@ extern "C" {
       grid->InsertNextCell(VTK_HEXAHEDRON, 8, thiscell);
     }
 
+    //
+    // Mark ghost cells
+    //
+
+    // Ghost cell array is not automatically allocated
+    grid->AllocateCellGhostArray();
+
+    // Ghost cells are treated as "duplicate cells" in VTK
+    vtkUnsignedCharArray * ghosts = grid->GetCellGhostArray();
+    for(vtkIdType cell = 0; cell < grid->GetNumberOfCells(); cell++) {
+      if( ghost_mask[cell] == 1 ) {
+        ghosts->SetValue(cell, vtkDataSetAttributes::DUPLICATECELL);
+      }
+    }
+
     // Register grid with the coprocessor
     vtkCPAdaptorAPI::GetCoProcessorData()->GetInputDescription(0)->SetGrid(grid);
 
@@ -93,7 +118,6 @@ extern "C" {
       vtkGenericWarningMacro("adaptor_copyfield: Unable to access CoProcessorData.");
       return;
     }
-
     if(vtkCPAdaptorAPI::GetCoProcessorData()->GetNumberOfInputDescriptions() != 1) {
       vtkGenericWarningMacro("adaptor_copyfield: Expected exactly 1 input description.");
       return;
@@ -108,12 +132,17 @@ extern "C" {
     }
 
     // Sanity checking
-    if (fieldtype != 1 | ncomponents != 1) {
-      vtkGenericWarningMacro("adaptor_copyfield: Only scalar cell data is supported at this point.");
+    if (!strcmp(fieldname,"")) {
+      vtkGenericWarningMacro("adaptor_copyfield: No name provided for fieldname.");
+      return;
     }
-
+    if (fieldtype != 1 || ncomponents != 1) {
+      vtkGenericWarningMacro("adaptor_copyfield: Only scalar cell data is supported at this point.");
+      return;
+    }
     if (grid->GetNumberOfCells() != ntuples) {
       vtkGenericWarningMacro("adaptor_copyfield: Number of tuples does not match VTK grid.");
+      return;
     }
 
     // Check if field is needed and copy data
@@ -127,6 +156,7 @@ extern "C" {
       }
       grid->GetCellData()->AddArray(field);
     }
+
   }
 
 }

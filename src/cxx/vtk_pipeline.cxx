@@ -101,8 +101,6 @@ int vtkCPVTKPipeline::CoProcess(vtkCPDataDescription* dataDescription) {
   writer->SetNumberOfPieces(this->MPISize);
   writer->SetStartPiece(this->MPIRank);
   writer->SetEndPiece(this->MPIRank);
-  // Grid handed over to VTK does not contain ghost cells
-  writer->SetGhostLevel(0);
   std::ostringstream o;
   o << dataDescription->GetTimeStep();
   std::string name = this->FileName + o.str() + ".pvtu";
