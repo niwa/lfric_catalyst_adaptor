@@ -1,6 +1,26 @@
 import paraview.simple as pvs
 from paraview import coprocessing as cp
 
+#
+# ParaView Catalyst pipeline for extracting a 2D spherical slice
+# of the 3D mesh and storing it as VTK polygonal data for further
+# analysis with ParaView or Python, along with data fields.
+#
+# A list of available filters and writers can be found here:
+# https://www.paraview.org/ParaView/Doc/Nightly/www/py-doc/\
+# paraview.servermanager_proxies.html
+#
+
+#
+# Pipeline parameters
+#
+
+# Radius of the sphere in [m]
+sphere_radius = 6371230
+
+# Switch for writing full model output
+write_full_output = True
+
 # ----------------------- CoProcessor definition -----------------------
 
 def CreateCoProcessor():
@@ -10,9 +30,21 @@ def CreateCoProcessor():
       # Define source of pipeline
       grid = coprocessor.CreateProducer( datadescription, "input" )
 
+      if (write_full_output == True):
+        fullWriter = pvs.XMLPUnstructuredGridWriter(Input=grid, DataMode="Appended",
+                                                    CompressorType="ZLib")
+        coprocessor.RegisterWriter(fullWriter, filename='full_output_%t.pvtu', freq=1)
+
+      # Create a spherical slice
+      slice = pvs.Slice(Input=grid)
+      slice.SliceType = 'Sphere'
+      slice.SliceOffsetValues = [0.0]
+      slice.SliceType.Radius = 6371230
+
       # Create writer for this data and register it with the pipeline
-      parallelWriter = pvs.XMLPUnstructuredGridWriter(Input=grid)
-      coprocessor.RegisterWriter(parallelWriter, filename='field_%t.pvtu', freq=1)
+      sliceWriter = pvs.XMLPPolyDataWriter(Input=slice, DataMode="Appended",
+                                           CompressorType="ZLib")
+      coprocessor.RegisterWriter(sliceWriter, filename='spherical_slice_%t.pvtp', freq=1)
 
     return Pipeline()
 
