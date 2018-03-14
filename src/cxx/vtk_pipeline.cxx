@@ -18,8 +18,11 @@
 // Create visualisation pipeline
 //
 
-// The pipeline is implemented as a VTK object and includes a number of
-// callback functions that will be used by the Catalyst coprocessor.
+// The pipeline is implemented by deriving from base class
+// "vtkCPPipeline". It therefore needs to implement the
+// "RequestDataDescription" and "CoProcess" methods that Catalyst
+// will call to work out if visualisation output is needed, and
+// to run the visualisation pipeline.
 
 // Insert standard implementation of "New"
 vtkStandardNewMacro(vtkCPVTKPipeline);
@@ -42,7 +45,7 @@ void vtkCPVTKPipeline::SetVTKPipelineParameters(const int outputFrequency, const
 }
 
 // Callback function: work out if we should produce output for this call
-// and let Catalyst know
+// and let Catalyst know by returning 1 (yes) or 0 (no)
 int vtkCPVTKPipeline::RequestDataDescription(vtkCPDataDescription* dataDescription) {
 
   if(!dataDescription) {
@@ -60,7 +63,7 @@ int vtkCPVTKPipeline::RequestDataDescription(vtkCPDataDescription* dataDescripti
     return 0;
   }
 
-  // Check if we need to produce output (forced or via request)
+  // Check if we need to produce output (either forced or via regular request)
   if(dataDescription->GetForceOutput() == true ||
     (this->OutputFrequency != 0 && dataDescription->GetTimeStep() % this->OutputFrequency == 0) ) {
     dataDescription->GetInputDescription(0)->AllFieldsOn();
@@ -101,6 +104,9 @@ int vtkCPVTKPipeline::CoProcess(vtkCPDataDescription* dataDescription) {
   writer->SetNumberOfPieces(this->MPISize);
   writer->SetStartPiece(this->MPIRank);
   writer->SetEndPiece(this->MPIRank);
+  // File compression
+  writer->SetCompressorTypeToZLib();
+  // Filename
   std::ostringstream o;
   o << dataDescription->GetTimeStep();
   std::string name = this->FileName + o.str() + ".pvtu";

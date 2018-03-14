@@ -13,11 +13,12 @@
 // Define wrappers for coprocessor interface
 //
 
-// Catalyst provides generic API functions for this, but we need to set
-// visualisation parameters and register our pipeline, so it seems
-// best to do everything directly in C++ and provide C-style wrappers.
-// It also enables users to choose between a C++ pipeline and a scripted
-// Python pipeline.
+// We use Catalyst's "CPAdaptorAPI" layer here, which is a C wrapper
+// API for talking to Catalyst, register our visualisation pipeline etc.
+// Users can choose between a C++ pipeline and a scripted Python pipeline.
+//
+// The adaptor may need to be reimplemented with the C++ API for more
+// fine-grained control over Catalyst.
 
 extern "C" {
 
@@ -27,6 +28,10 @@ extern "C" {
 
     // Check if the coprocessor has already been initialised, only clear out pipelines in that case
     if (!vtkCPAdaptorAPI::GetCoProcessor()) {
+      // Note that this will initialise Catalyst with MPI_COMM_WORLD communicator. This seems ok
+      // at the moment, but may need to be revisited. The Catalyst C wrapper API does not expose
+      // a method to initialise Catalyst with a different communicator, but the C++ API has an
+      // "initialize" method for this purpose.
       vtkCPAdaptorAPI::CoProcessorInitialize();
     }
     else {
@@ -74,6 +79,9 @@ extern "C" {
   }
 
   void coprocessor_requestdatadescription(int * timeStep, double * time, int * coprocessThisTimeStep) {
+    // Note that a mechanism for forcing output can be implemented here using
+    // vtkCPAdaptorAPI::GetCoProcessorData()->SetForceOutput(true);
+    // before calling "RequestDataDescription".
     vtkCPAdaptorAPI::RequestDataDescription(timeStep, time, coprocessThisTimeStep);
   }
 
@@ -86,7 +94,7 @@ extern "C" {
   }
 
   void coprocessor_finalize() {
-    vtkCPAdaptorAPI::CoProcessorFinalize ();
+    vtkCPAdaptorAPI::CoProcessorFinalize();
   }
 
 }

@@ -18,10 +18,16 @@
 // The easiest way to do this is to use simple buffers to move grid and
 // data. The implementation uses VTK's smart pointers and stores the
 // VTK grid and data to avoid scope issues and memory leaks.
+//
+// This implementation uses Catalyst's C wrapper API "vtkCPAdaptorAPI"
+// at the moment. It may be necessary to use the C++ API directly for
+// more fine-grained control at a later point.
 
 extern "C" {
 
-  // Create a new VTK grid and register it with the coprocessor
+  // Create a new VTK grid and register it with the coprocessor. Catalyst
+  // supports several grids ("inputs"), but only one is used here.
+  //
   // Funtion arguments:
   // point_coords: cartesian coordinates of each grid vertex
   // npoints: number of vertices in grid
@@ -154,6 +160,9 @@ extern "C" {
       for (vtkIdType i = 0; i < grid->GetNumberOfCells(); i++) {
 	field->SetComponent(i, 0, fieldvalues[i]);
       }
+      // Adding the array should automatically remove and deallocate arrays
+      // that were previously added with the same name. So we shouldn't have
+      // to worry about creating a memory leak here.
       grid->GetCellData()->AddArray(field);
     }
 
