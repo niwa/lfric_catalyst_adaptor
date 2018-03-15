@@ -33,10 +33,11 @@ extern "C" {
   // npoints: number of vertices in grid
   // cell_points: point indices for each cell
   // ncells: number of cells in grid
-  // ghost_mask: mask array for ghost cells 
+  // ghost_mask: mask array for ghost cells
+  // use_ghost_mask: flag for including model ghost cells in VTK grid
   void adaptor_creategrid(const double * point_coords, const long npoints,
                           const long * cell_points, const long ncells,
-                          const short * ghost_mask) {
+                          const short * ghost_mask, const short use_ghost_mask) {
 
     if (!vtkCPAdaptorAPI::GetCoProcessorData()) {
       vtkGenericWarningMacro("adaptor_creategrid: Unable to access CoProcessorData.");
@@ -91,18 +92,24 @@ extern "C" {
     }
 
     //
-    // Mark ghost cells
+    // Mark ghost cells if requested
+    // It needs to be determined whether it is a good idea to transfer
+    // existing ghost cells from the simulation to VTK
     //
 
-    // Ghost cell array is not automatically allocated
-    grid->AllocateCellGhostArray();
+    if (use_ghost_mask) {
 
-    // Ghost cells are treated as "duplicate cells" in VTK
-    vtkUnsignedCharArray * ghosts = grid->GetCellGhostArray();
-    for(vtkIdType cell = 0; cell < grid->GetNumberOfCells(); cell++) {
-      if( ghost_mask[cell] == 1 ) {
-        ghosts->SetValue(cell, vtkDataSetAttributes::DUPLICATECELL);
+      // Ghost cell array is not automatically allocated
+      grid->AllocateCellGhostArray();
+
+      // Ghost cells are treated as "duplicate cells" in VTK
+      vtkUnsignedCharArray * ghosts = grid->GetCellGhostArray();
+      for(vtkIdType cell = 0; cell < grid->GetNumberOfCells(); cell++) {
+	if( ghost_mask[cell] == 1 ) {
+	  ghosts->SetValue(cell, vtkDataSetAttributes::DUPLICATECELL);
+	}
       }
+
     }
 
     // Register grid with the coprocessor
