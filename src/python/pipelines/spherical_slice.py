@@ -38,8 +38,9 @@ def CreateCoProcessor():
       # Create a spherical slice
       slice = pvs.Slice(Input=grid)
       slice.SliceType = 'Sphere'
+      slice.Triangulatetheslice = 0
       slice.SliceOffsetValues = [0.0]
-      slice.SliceType.Radius = 6371230
+      slice.SliceType.Radius = sphere_radius
 
       # Create writer for this data and register it with the pipeline
       sliceWriter = pvs.XMLPPolyDataWriter(Input=slice, DataMode="Appended",
@@ -74,16 +75,15 @@ coprocessor.EnableLiveVisualization(False)
 def RequestDataDescription(datadescription):
     "Callback to populate the request for current timestep"
     global coprocessor
+
+    # Output all fields and meshes if forced
     if datadescription.GetForceOutput() == True:
-        # We are just going to request all fields and meshes from the simulation
-        # code/adaptor.
         for i in range(datadescription.GetNumberOfInputDescriptions()):
             datadescription.GetInputDescription(i).AllFieldsOn()
             datadescription.GetInputDescription(i).GenerateMeshOn()
         return
 
-    # setup requests for all inputs based on the requirements of the
-    # pipeline.
+    # Default implementation, uses output frequencies set in pipeline
     coprocessor.LoadRequestedData(datadescription)
 
 # ------------------------ Processing method ------------------------
