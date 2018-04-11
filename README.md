@@ -32,3 +32,24 @@ If you want to use the Python pipeline, set ```PYTHONPATH``` to something like
 ```
 export PYTHONPATH=/path/to/catalyst/installation/lib/paraview-5.4/site-packages:/path/to/catalyst/installation/lib/paraview-5.4/site-packages/vtk:$PYTHONPATH
 ```
+
+## Python scripts
+
+The repository includes a number of Python scripts which define visualisation pipelines or provide some post-processing functionality.
+
+### full_output.py
+Simple Python pipeline for writing the model grid and data field to a VTK file.
+
+### spherical_slice.py
+
+Simple Python pipeline for creating spherical slices of model grid with a preset radius, which are written into a VTK polydata file. Full output of the model grid and data field can also be produced by setting the corresponding flag in the pipeline script.
+
+### map_project.py
+
+This Python program expects a spherical slice (as produced by the ```spherical_slice.py``` visualisation pipeline) in VTK polydata format as input and produces a VTK polydata file with a map projection as output. The program can handle partitioned datasets, but computing map projections for multiple timesteps is not supported yet.
+
+Running
+```
+./map_project.py input.vtp output.vtp
+```
+computes a Mollweide map projection. Use flag ```--list-projections``` to get a list of projections and their short names (projections are provide by the PROJ library). Short names can be used to set another projection with the ```--projname``` flag, e.g., ```--projname=gall```.
