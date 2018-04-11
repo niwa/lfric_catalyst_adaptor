@@ -23,7 +23,7 @@
 extern "C" {
 
   void coprocessor_initialize(const int visualisationFrequency, const char * outputFileName,
-                              const MPI_Comm mpi_comm, const int usePythonPipeline,
+                              const MPI_Fint mpi_fortran_comm, const int usePythonPipeline,
                               const char * pythonScript) {
 
     // Check if the coprocessor has already been initialised, only clear out pipelines in that case
@@ -61,6 +61,9 @@ extern "C" {
 	vtkGenericWarningMacro("coprocessor_initialize: No filename provided for outputFileName.");
 	return;
       }
+
+      // Retrieve C communicator from Fortran
+      MPI_Comm mpi_comm = MPI_Comm_f2c(mpi_fortran_comm);
 
       // Find out MPI rank and size to handle grid partitioning in VTK grid
       int mpiSize = 1;
