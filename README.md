@@ -44,6 +44,18 @@ Simple Python pipeline for writing the model grid and data field to a VTK file.
 
 Simple Python pipeline for creating spherical slices of model grid with a preset radius, which are written into a VTK polydata file. Full output of the model grid and data field can also be produced by setting the corresponding flag in the pipeline script.
 
+### spherical_slice_contours.py
+
+Same as "spherical_slice.py", but includes an additional output file with contours.
+
+### spherical_slice_rendered.py
+
+Same as "spherical_slice.py", but includes a rendered image of the slice which is stored as a png file.
+
+### meridional_slice.py
+
+Creates and stores a meridional slice for a chosen longitude, including a transformation from Cartesian to longitude-radius coordinates.
+
 ### map_project.py
 
 This Python program expects a spherical slice (as produced by the ```spherical_slice.py``` visualisation pipeline) in VTK polydata format as input and produces a VTK polydata file with a map projection as output. The program can handle partitioned datasets, but computing map projections for multiple timesteps is not supported yet.
