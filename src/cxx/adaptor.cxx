@@ -1,4 +1,3 @@
-#include <vtkCPAdaptorAPI.h>
 #include <vtkCPDataDescription.h>
 #include <vtkCPInputDataDescription.h>
 #include <vtkSmartPointer.h>
@@ -18,10 +17,9 @@
 // The easiest way to do this is to use simple buffers to move grid and
 // data. The implementation uses VTK's smart pointers and stores the
 // VTK grid and data to avoid scope issues and memory leaks.
-//
-// This implementation uses Catalyst's C wrapper API "vtkCPAdaptorAPI"
-// at the moment. It may be necessary to use the C++ API directly for
-// more fine-grained control at a later point.
+
+// We need to access the dataDescription object defined in the coprocessor API
+extern vtkCPDataDescription * dataDescription;
 
 extern "C" {
 
@@ -39,11 +37,12 @@ extern "C" {
                           const long * cell_points, const long ncells,
                           const short * ghost_mask, const short use_ghost_mask) {
 
-    if (!vtkCPAdaptorAPI::GetCoProcessorData()) {
-      vtkGenericWarningMacro("adaptor_creategrid: Unable to access CoProcessorData.");
+    if (!dataDescription) {
+      vtkGenericWarningMacro("adaptor_creategrid: Unable to access dataDescription.");
       return;
     }
-    if (vtkCPAdaptorAPI::GetCoProcessorData()->GetNumberOfInputDescriptions() != 1) {
+    // We only use one VTK grid and set of fields at this point
+    if (dataDescription->GetNumberOfInputDescriptions() != 1) {
       vtkGenericWarningMacro("adaptor_creategrid: expected exactly 1 input description.");
       return;
     }
@@ -55,7 +54,6 @@ extern "C" {
       vtkGenericWarningMacro("adaptor_creategrid: Invalid number provided for ncells:" << ncells);
       return;
     }
-
 
     // Create new grid
     vtkSmartPointer<vtkUnstructuredGrid> grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -113,7 +111,7 @@ extern "C" {
     }
 
     // Register grid with the coprocessor
-    vtkCPAdaptorAPI::GetCoProcessorData()->GetInputDescription(0)->SetGrid(grid);
+    dataDescription->GetInputDescription(0)->SetGrid(grid);
 
   }
 
@@ -127,17 +125,17 @@ extern "C" {
   void adaptor_copyfield(const char * fieldname, const int fieldtype, const int ncomponents,
 			 const long ntuples, const double * fieldvalues) {
 
-    if (!vtkCPAdaptorAPI::GetCoProcessorData()) {
-      vtkGenericWarningMacro("adaptor_copyfield: Unable to access CoProcessorData.");
+    if (!dataDescription) {
+      vtkGenericWarningMacro("adaptor_copyfield: Unable to access dataDescription.");
       return;
     }
-    if(vtkCPAdaptorAPI::GetCoProcessorData()->GetNumberOfInputDescriptions() != 1) {
-      vtkGenericWarningMacro("adaptor_copyfield: Expected exactly 1 input description.");
+    if (dataDescription->GetNumberOfInputDescriptions() != 1) {
+      vtkGenericWarningMacro("adaptor_copyfield: expected exactly 1 input description.");
       return;
     }
 
     // Try to get grid from coprocessor
-    vtkCPInputDataDescription * InputDescription = vtkCPAdaptorAPI::GetCoProcessorData()->GetInputDescription(0);
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
     vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
     if (!grid) {
       vtkGenericWarningMacro("adaptor_copyfield: Unable to access VTK grid.");
