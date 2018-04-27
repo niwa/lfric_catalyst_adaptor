@@ -5,7 +5,7 @@ This package builds a library for visualising simulation data with a simple VTK 
 
 ## Building the adaptor
 
-To build this code, you will need to build and install the "Catalyst-v5.4.1-Base-Enable-Python-Essentials-Extras-Rendering-Base" source code package on your system.
+To build this code, you will need to build and install ParaView with Catalyst option enabled, or the "Catalyst-v5.4.1-Base-Enable-Python-Essentials-Extras-Rendering-Base" source code package on your system. Note that the visualisation pipelines with image rendering may require the full ParaView package to work correctly.
 
 Once this is done, build the code using CMake as follows:
 ```
@@ -51,6 +51,10 @@ Same as "spherical_slice.py", but includes an additional output file with contou
 ### spherical_slice_rendered.py
 
 Same as "spherical_slice.py", but includes a rendered image of the slice which is stored as a png file.
+
+### spherical_slice_rendered_coastlines.py
+
+Same as "spherical_slice_rendered.py", but overlays coastlines on the rendered image. Requires downloading coastlines data, see source file for instructions.
 
 ### meridional_slice.py
 

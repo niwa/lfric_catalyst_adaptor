@@ -5,8 +5,11 @@ from paraview import coprocessing as cp
 # ParaView Catalyst pipeline for extracting a 2D spherical slice
 # of the 3D mesh and storing it as VTK polygonal data for further
 # analysis with ParaView or Python, along with data fields. This
-# version also creates a rendered image of the slice and stores
-# it as an image file in png format.
+# version overlays coastlines, creates a rendered image of the
+# slice, and stores it as an image file in png format.
+#
+# Coastlines data set can be downloaded here:
+# http://www.earthmodels.org/data-and-tools/coastlines/Coastlines_Los_Alamos.vtp
 #
 # A list of available filters and writers can be found here:
 # https://www.paraview.org/ParaView/Doc/Nightly/www/py-doc/\
@@ -36,6 +39,14 @@ fieldname = 'rho'
 def CreateCoProcessor():
   def _CreatePipeline(coprocessor, datadescription):
     class Pipeline:
+
+      # Read coastlines
+      clines = pvs.XMLPolyDataReader(FileName="Coastlines_Los_Alamos.vtp")
+
+      # Scale data to radius of the sphere
+      clinesscaled = pvs.Calculator(Input=clines)
+      clinesscaled.CoordinateResults = 1
+      clinesscaled.Function = '%i*(coordsX*iHat+coordsY*jHat+coordsZ*kHat)' % sphere_radius
 
       # Define source of pipeline
       grid = coprocessor.CreateProducer( datadescription, "input" )
@@ -86,6 +97,12 @@ def CreateCoProcessor():
       sphere1Display.Representation = 'Surface'
       sphere1Display.ColorArrayName = ['CELLS', fieldname]
       sphere1Display.LookupTable = LUT
+      sphere1Display.Opacity = 1.0
+
+      # Show topo data
+      sphere1Display = pvs.Show(clinesscaled, renderView)
+      sphere1Display.Representation = 'Surface'
+      sphere1Display.Opacity = 1.0
 
     return Pipeline()
 
