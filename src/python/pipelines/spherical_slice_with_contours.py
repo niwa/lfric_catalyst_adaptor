@@ -12,6 +12,10 @@ from paraview import coprocessing as cp
 # paraview.servermanager_proxies.html
 #
 
+# NOTE: This currently only runs correctly in serial mode, as
+#       neighbour/ghost cells are needed for the
+#       CellDataToPointData filter.
+
 #
 # Pipeline parameters
 #
@@ -58,7 +62,7 @@ def CreateCoProcessor():
 
       # Create contours
       # Note that the "tube" filter can be used to highlight contours if needed.
-      contours = pvs.Contour(Input=slice)
+      contours = pvs.Contour(Input=cell2point)
       contours.Isosurfaces=contour_values
       contours.ContourBy = ['POINTS', 'rho']
       contours.PointMergeMethod = 'Uniform Binning'

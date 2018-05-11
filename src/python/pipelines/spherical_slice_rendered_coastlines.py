@@ -99,7 +99,7 @@ def CreateCoProcessor():
       sphere1Display.LookupTable = LUT
       sphere1Display.Opacity = 1.0
 
-      # Show topo data
+      # Show coastlines
       sphere1Display = pvs.Show(clinesscaled, renderView)
       sphere1Display.Representation = 'Surface'
       sphere1Display.Opacity = 1.0
