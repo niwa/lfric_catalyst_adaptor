@@ -147,8 +147,8 @@ extern "C" {
       vtkGenericWarningMacro("adaptor_copyfield: No name provided for fieldname.");
       return;
     }
-    if (fieldtype != 1 || ncomponents != 1) {
-      vtkGenericWarningMacro("adaptor_copyfield: Only scalar cell data is supported at this point.");
+    if (fieldtype != 1) {
+      vtkGenericWarningMacro("adaptor_copyfield: Only cell data is supported at this point.");
       return;
     }
     if (grid->GetNumberOfCells() != ntuples) {
@@ -159,11 +159,15 @@ extern "C" {
     // Check if field is needed and copy data
     if (InputDescription->IsFieldNeeded(fieldname)) {
       vtkSmartPointer<vtkDoubleArray> field = vtkSmartPointer<vtkDoubleArray>::New();
-      field->SetNumberOfTuples(grid->GetNumberOfCells());
-      field->SetNumberOfComponents(1);
+      // Need to set number of components *before* number of tuples to ensure
+      // that a sufficient amount of memory is allocated
+      field->SetNumberOfComponents(ncomponents);
+      field->SetNumberOfTuples(ntuples);
       field->SetName(fieldname);
-      for (vtkIdType i = 0; i < grid->GetNumberOfCells(); i++) {
-	field->SetComponent(i, 0, fieldvalues[i]);
+      for (int j = 0; j < ncomponents; j++) {
+	for (vtkIdType i = 0; i < ntuples; i++) {
+	  field->SetComponent(i, j, fieldvalues[j*ntuples + i]);
+	}
       }
       // Adding the array should automatically remove and deallocate arrays
       // that were previously added with the same name. So we shouldn't have
