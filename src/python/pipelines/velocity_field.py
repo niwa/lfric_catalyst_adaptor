@@ -3,19 +3,13 @@ from paraview import coprocessing as cp
 
 #
 # ParaView Catalyst pipeline for extracting a 2D spherical slice
-# of the 3D mesh and storing it as VTK polygonal data for further
-# analysis with ParaView or Python, along with data fields. This
-# version also creates a rendered image of the slice and stores
-# it as an image file in png format.
+# of the 3D mesh and showing velocity field magnitude and vectors.
+# Creates a rendered image of the slice, and stores it as an image
+# file in png format.
 #
 # A list of available filters and writers can be found here:
 # https://www.paraview.org/ParaView/Doc/Nightly/www/py-doc/\
 # paraview.servermanager_proxies.html
-#
-
-#
-# IMPORTANT NOTE: this pipeline requires rendering components
-#                 that may require a full build of ParaView
 #
 
 #
@@ -25,43 +19,30 @@ from paraview import coprocessing as cp
 # Radius of the sphere in [m]
 sphere_radius = 6371230
 
-# Switch for writing full model output
-write_full_output = True
-
-# Name of field used for colouring the rendered image
-fieldname = 'rho'
-
-# Use static data range here to avoid MPI reduction call for
-# establishing global range
-dataRange = [1.2, 1.5]
-
 # ----------------------- CoProcessor definition -----------------------
 
 def CreateCoProcessor():
   def _CreatePipeline(coprocessor, datadescription):
     class Pipeline:
 
-      # Define source of pipeline
-      grid = coprocessor.CreateProducer( datadescription, "input" )
+      grid = coprocessor.CreateProducer(datadescription, 'input')
 
-      if (write_full_output == True):
-        fullWriter = pvs.XMLPUnstructuredGridWriter(Input=grid, DataMode="Appended",
-                                                    CompressorType="ZLib")
-        coprocessor.RegisterWriter(fullWriter, filename='full_output_%t.pvtu', freq=1)
+      # Normalise radius - simplifies creating glyphs
+      normalise = pvs.Calculator(Input=grid)
+      normalise.CoordinateResults = 1
+      normalise.Function = 'coords/%i' % sphere_radius
 
-      # Create a spherical slice
-      slice = pvs.Slice(Input=grid)
-      slice.SliceType = 'Sphere'
-      slice.Triangulatetheslice = 0
-      slice.SliceOffsetValues = [0.0]
-      slice.SliceType.Radius = sphere_radius
+      # Visualise velocity field using arrows
+      glyph = pvs.Glyph(Input=normalise, GlyphType='Arrow')
+      glyph.Scalars = ['POINTS', 'None']
+      glyph.Vectors = ['CELLS', 'u']
+      glyph.ScaleFactor = 0.2
+      glyph.GlyphTransform = 'Transform2'
+      glyph.GlyphType.TipResolution = 12
+      glyph.GlyphType.TipRadius = 0.05
+      glyph.GlyphType.ShaftRadius = 0.015
 
-      # Create writer for this data and register it with the pipeline
-      sliceWriter = pvs.XMLPPolyDataWriter(Input=slice, DataMode="Appended",
-                                           CompressorType="ZLib")
-      coprocessor.RegisterWriter(sliceWriter, filename='spherical_slice_%t.pvtp', freq=1)
-
-      # Create a new render view
+      # Create a new 'Render View'
       renderView = pvs.CreateView('RenderView')
       renderView.ViewSize = [1500, 768]
       renderView.AxesGrid = 'GridAxes3DActor'
@@ -70,25 +51,36 @@ def CreateCoProcessor():
       renderView.CameraViewUp = [0.5, 0.3, 0.8]
       renderView.CameraParallelScale = 1.7
       renderView.Background = [0.32, 0.34, 0.43]
-      renderView.ViewTime = datadescription.GetTime()
 
       # Register the view with coprocessor
       # and provide it with information such as the filename to use,
       # how frequently to write the images, etc.
-      coprocessor.RegisterView(renderView, filename='spherical_slice_%t.png', freq=1,
+      coprocessor.RegisterView(renderView, filename='velocity_field_%t.png', freq=1,
                                fittoscreen=1, magnification=1, width=1500, height=768,
                                cinema={})
+      renderView.ViewTime = datadescription.GetTime()
 
-      # Create colour transfer function for field
-      LUT = pvs.GetColorTransferFunction(fieldname)
-      LUT.RGBPoints = [dataRange[0], 0.23, 0.30, 0.75, 0.5*sum(dataRange), 0.87, 0.87, 0.87, dataRange[1], 0.71, 0.016, 0.15]
-      LUT.ScalarRangeInitialized = 1.0
+      # Create colour transfer function for velocity field
+      uLUT = pvs.GetColorTransferFunction('u')
+      uLUT.RGBPoints = [1.7, 0.23, 0.30, 0.75, 20.9, 0.87, 0.87, 0.87, 40.0, 0.71, 0.016, 0.15]
+      uLUT.ScalarRangeInitialized = 1.0
 
-      # Show surface and colour by field value (which is cell data) using lookup table
-      sphereDisplay = pvs.Show(slice, renderView)
-      sphereDisplay.Representation = 'Surface'
-      sphereDisplay.ColorArrayName = ['CELLS', fieldname]
-      sphereDisplay.LookupTable = LUT
+      # Show velocity field magnitude
+      velocitymagDisplay = pvs.Show(normalise, renderView)
+      velocitymagDisplay.Representation = 'Surface'
+      velocitymagDisplay.ColorArrayName = ['CELLS', 'u']
+      velocitymagDisplay.LookupTable = uLUT
+
+      # Show colour legend
+      uLUTColorBar = pvs.GetScalarBar(uLUT, renderView)
+      uLUTColorBar.Title = 'u'
+      uLUTColorBar.ComponentTitle = 'Magnitude'
+      velocitymagDisplay.SetScalarBarVisibility(renderView, True)
+
+      # Show velocity field glyphs
+      glyphDisplay = pvs.Show(glyph, renderView)
+      glyphDisplay.Representation = 'Surface'
+      glyphDisplay.ColorArrayName = [None, '']
 
     return Pipeline()
 
@@ -97,36 +89,38 @@ def CreateCoProcessor():
       self.Pipeline = _CreatePipeline(self, datadescription)
 
   coprocessor = CoProcessor()
-  freqs = {'input': [1]}
+  # These are the frequencies at which the coprocessor updates.
+  freqs = {'input': [1, 1, 1]}
   coprocessor.SetUpdateFrequencies(freqs)
   return coprocessor
 
+
 #--------------------------------------------------------------
-# Global variables that will hold the pipeline for each timestep
+# Global variable that will hold the pipeline for each timestep
 # Creating the CoProcessor object, doesn't actually create the ParaView pipeline.
 # It will be automatically setup when coprocessor.UpdateProducers() is called the
 # first time.
 coprocessor = CreateCoProcessor()
 
 #--------------------------------------------------------------
-# Enable Live-Visualizaton with ParaView
+# Enable Live-Visualizaton with ParaView and the update frequency
 coprocessor.EnableLiveVisualization(False)
-
 
 # ---------------------- Data Selection method ----------------------
 
 def RequestDataDescription(datadescription):
     "Callback to populate the request for current timestep"
     global coprocessor
-
-    # Output all fields and meshes if forced
     if datadescription.GetForceOutput() == True:
+        # We are just going to request all fields and meshes from the simulation
+        # code/adaptor.
         for i in range(datadescription.GetNumberOfInputDescriptions()):
             datadescription.GetInputDescription(i).AllFieldsOn()
             datadescription.GetInputDescription(i).GenerateMeshOn()
         return
 
-    # Default implementation, uses output frequencies set in pipeline
+    # setup requests for all inputs based on the requirements of the
+    # pipeline.
     coprocessor.LoadRequestedData(datadescription)
 
 # ------------------------ Processing method ------------------------
@@ -143,7 +137,8 @@ def DoCoProcessing(datadescription):
     coprocessor.WriteData(datadescription);
 
     # Write image capture (Last arg: rescale lookup table), if appropriate.
-    coprocessor.WriteImages(datadescription, rescale_lookuptable=False)
+    coprocessor.WriteImages(datadescription, rescale_lookuptable=False,
+                            image_quality=0, padding_amount=0)
 
     # Live Visualization, if enabled.
     coprocessor.DoLiveVisualization(datadescription, "localhost", 22222)

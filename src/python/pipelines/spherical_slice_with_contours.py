@@ -29,6 +29,10 @@ contour_values = [1.15, 1.2, 1.25, 1.3, 1.35]
 # Switch for writing full model output
 write_full_output = True
 
+# Use static data range here to avoid MPI reduction call for
+# establishing global range
+dataRange = [1.2, 1.5]
+
 # ----------------------- CoProcessor definition -----------------------
 
 def CreateCoProcessor():
@@ -50,15 +54,18 @@ def CreateCoProcessor():
       slice.SliceOffsetValues = [0.0]
       slice.SliceType.Radius = sphere_radius
 
+      # Generate ghost cells - needed by CellDatatoPointData filter
+      ghosts = pvs.GhostCellsGenerator(Input=grid)
+      ghosts.BuildIfRequired = 0
+      ghosts.MinimumNumberOfGhostLevels = 1
+
       # Convert cell data to point data, which is required for good contour results
       # Request "piece invariance" to ensure consistent values at
       # partition boundaries.
       #
       # CAUTION: THIS FILTER AVERAGES DATA FROM ALL CELLS SURROUNDING A POINT,
       #          WHICH REDUCES ACCURACY
-      cell2point = pvs.CellDatatoPointData(Input=slice)
-      cell2point.PassCellData=1
-      cell2point.PieceInvariant=1
+      cell2point = pvs.CellDatatoPointData(Input=ghosts)
 
       # Create contours
       # Note that the "tube" filter can be used to highlight contours if needed.
@@ -74,9 +81,53 @@ def CreateCoProcessor():
                                            CompressorType="ZLib")
       coprocessor.RegisterWriter(sliceWriter, filename='spherical_slice_%t.pvtp', freq=1)
 
-      contourWriter = pvs.XMLPPolyDataWriter(Input=contours, DataMode="Appended",
-                                             CompressorType="ZLib")
-      coprocessor.RegisterWriter(contourWriter, filename='contours_%t.pvtp', freq=1)
+      # Create a new render view
+      renderView = pvs.CreateView('RenderView')
+      renderView.ViewSize = [1500, 768]
+      renderView.AxesGrid = 'GridAxes3DActor'
+      renderView.StereoType = 0
+      renderView.CameraPosition = [0.0, 1.0, 0.3]
+      renderView.CameraViewUp = [0.0, 0.0, 1.0]
+      renderView.CameraParallelScale = 1.0
+      renderView.Background = [0.32, 0.34, 0.43]
+      renderView.ViewTime = datadescription.GetTime()
+
+      # Register the view with coprocessor
+      # and provide it with information such as the filename to use,
+      # how frequently to write the images, etc.
+      coprocessor.RegisterView(renderView, filename='contours_%t.png', freq=1,
+                               fittoscreen=1, magnification=1, width=1500, height=768,
+                               cinema={})
+
+      # Create colour transfer function for field
+      LUT = pvs.GetColorTransferFunction('rho')
+      LUT.RGBPoints = [dataRange[0], 0.23, 0.30, 0.75, 0.5*sum(dataRange), 0.87, 0.87, 0.87, dataRange[1], 0.71, 0.016, 0.15]
+      LUT.ScalarRangeInitialized = 1.0
+
+      # Show surface and colour by field value (which is cell data) using lookup table
+      sphereDisplay = pvs.Show(slice, renderView)
+      sphereDisplay.Representation = 'Surface'
+      sphereDisplay.ColorArrayName = ['CELLS', 'rho']
+      sphereDisplay.LookupTable = LUT
+
+      # Show coastlines
+      contourDisplay = pvs.Show(contours, renderView)
+      contourDisplay.Representation = 'Surface'
+      contourDisplay.ColorArrayName = [None, '']
+      contourDisplay.OSPRayScaleArray = 'theta '
+      contourDisplay.OSPRayScaleFunction = 'PiecewiseFunction'
+      contourDisplay.SelectOrientationVectors = 'None'
+      contourDisplay.ScaleFactor = 1193042.2418936265
+      contourDisplay.SelectScaleArray = 'None'
+      contourDisplay.GlyphType = 'Arrow'
+      contourDisplay.GlyphTableIndexArray = 'None'
+      contourDisplay.DataAxesGrid = 'GridAxesRepresentation'
+      contourDisplay.PolarAxes = 'PolarAxesRepresentation'
+      contourDisplay.GaussianRadius = 596521.1209468133
+      contourDisplay.SetScaleArray = ['POINTS', 'theta ']
+      contourDisplay.ScaleTransferFunction = 'PiecewiseFunction'
+      contourDisplay.OpacityArray = ['POINTS', 'theta ']
+      contourDisplay.OpacityTransferFunction = 'PiecewiseFunction'
 
     return Pipeline()
 

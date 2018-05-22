@@ -3,10 +3,8 @@ from paraview import coprocessing as cp
 
 #
 # ParaView Catalyst pipeline for extracting a 2D spherical slice
-# of the 3D mesh and storing it as VTK polygonal data for further
-# analysis with ParaView or Python, along with data fields. This
-# version overlays coastlines, creates a rendered image of the
-# slice, and stores it as an image file in png format.
+# of the 3D mesh and overlaying it with coastlines and isocontours.
+# The scene is rendered into an image and stored in png format.
 #
 # Coastlines data set can be downloaded here:
 # http://www.earthmodels.org/data-and-tools/coastlines/Coastlines_Los_Alamos.vtp
@@ -28,15 +26,8 @@ from paraview import coprocessing as cp
 # Radius of the sphere in [m]
 sphere_radius = 6371230
 
-# Switch for writing full model output
-write_full_output = True
-
-# Name of field used for colouring the rendered image
-fieldname = 'theta'
-
-# Use static data range here to avoid MPI reduction call for
-# establishing global range
-dataRange = [2.7e2, 2.8e2]
+# Values at which contours shall be produced
+contour_values = [1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 15]
 
 # ----------------------- CoProcessor definition -----------------------
 
@@ -44,66 +35,106 @@ def CreateCoProcessor():
   def _CreatePipeline(coprocessor, datadescription):
     class Pipeline:
 
-      # Read coastlines
-      clines = pvs.XMLPolyDataReader(FileName="Coastlines_Los_Alamos.vtp")
+      # Read topographic data
+      topo = pvs.XMLPolyDataReader(FileName="ETOPO_10min_Ice.vtp")
 
-      # Scale data to radius of the sphere
-      clinesscaled = pvs.Calculator(Input=clines)
-      clinesscaled.CoordinateResults = 1
-      clinesscaled.Function = '%i*coords' % sphere_radius
+      # Scale data to just under radius of the sphere
+      toposcaled = pvs.Calculator(Input=topo)
+      toposcaled.CoordinateResults = 1
+      toposcaled.Function = '%i*coords' % (sphere_radius*0.99)
 
       # Define source of pipeline
       grid = coprocessor.CreateProducer( datadescription, "input" )
 
-      if (write_full_output == True):
-        fullWriter = pvs.XMLPUnstructuredGridWriter(Input=grid, DataMode="Appended",
-                                                    CompressorType="ZLib")
-        coprocessor.RegisterWriter(fullWriter, filename='full_output_%t.pvtu', freq=1)
+      ghosts = pvs.GhostCellsGenerator(Input=grid)
+      ghosts.BuildIfRequired = 0
+      ghosts.MinimumNumberOfGhostLevels = 1
 
       # Create a spherical slice
-      slice = pvs.Slice(Input=grid)
+      slice = pvs.Slice(Input=ghosts)
       slice.SliceType = 'Sphere'
       slice.Triangulatetheslice = 0
       slice.SliceOffsetValues = [0.0]
       slice.SliceType.Radius = sphere_radius
 
-      # Create writer for this data and register it with the pipeline
-      sliceWriter = pvs.XMLPPolyDataWriter(Input=slice, DataMode="Appended",
-                                           CompressorType="ZLib")
-      coprocessor.RegisterWriter(sliceWriter, filename='spherical_slice_%t.pvtp', freq=1)
+      # Convert cell data to point data, which is required for good contour results
+      #
+      # CAUTION: THIS FILTER AVERAGES DATA FROM ALL CELLS SURROUNDING A POINT,
+      #          WHICH REDUCES ACCURACY
+      cell2point = pvs.CellDatatoPointData(Input=slice)
+      cell2point.PassCellData = 0
+      cell2point.PieceInvariant = 0
+
+      # Create contours
+      # Note that the "tube" filter can be used to highlight contours if needed.
+      contours = pvs.Contour(Input=cell2point)
+      contours.Isosurfaces=contour_values
+      contours.ContourBy = ['POINTS', 'rho']
+      contours.PointMergeMethod = 'Uniform Binning'
 
       # Create a new render view
       renderView = pvs.CreateView('RenderView')
       renderView.ViewSize = [1500, 768]
       renderView.AxesGrid = 'GridAxes3DActor'
       renderView.StereoType = 0
-      renderView.CameraPosition = [-5, -2, 4]
-      renderView.CameraViewUp = [0.5, 0.3, 0.8]
-      renderView.CameraParallelScale = 1.7
+      renderView.CameraPosition = [0.0, 1.0, 0.3]
+      renderView.CameraViewUp = [0.0, 0.0, 1.0]
+      renderView.CameraParallelScale = 1.0
       renderView.Background = [0.32, 0.34, 0.43]
       renderView.ViewTime = datadescription.GetTime()
 
       # Register the view with coprocessor
       # and provide it with information such as the filename to use,
       # how frequently to write the images, etc.
-      coprocessor.RegisterView(renderView, filename='spherical_slice_%t.png', freq=1,
-                               fittoscreen=1, magnification=1, width=1500, height=768,
+      coprocessor.RegisterView(renderView, filename='topo_contours_%t.png', freq=1,
+                               fittoscreen=1, magnification=1, width=800, height=800,
                                cinema={})
 
       # Create colour transfer function for field
-      LUT = pvs.GetColorTransferFunction(fieldname)
-      LUT.RGBPoints = [dataRange[0], 0.23, 0.30, 0.75, 0.5*sum(dataRange), 0.87, 0.87, 0.87, dataRange[1], 0.71, 0.016, 0.15]
+      LUT = pvs.GetColorTransferFunction('altitude')
+      # Use Wikipedia LUT as provided on http://www.earthmodels.org/data-and-tools/color-tables
+      LUT.RGBPoints = [	
+        -11000, 0.141176470588235, 0.149019607843137,0.686274509803922,
+        -5499.999, 0.219607843137255, 0.227450980392157,0.764705882352941,
+        -5500, 0.219607843137255, 0.227450980392157,0.764705882352941,
+        -2999.999, 0.274509803921569, 0.282352941176471,0.83921568627451,
+        -3000, 0.274509803921569, 0.282352941176471,0.83921568627451,
+        -1999.999, 0.317647058823529, 0.4,0.850980392156863,
+        -2000, 0.317647058823529, 0.4,0.850980392156863,
+        -749.999, 0.392156862745098, 0.505882352941176,0.874509803921569,
+        -750, 0.392156862745098, 0.505882352941176,0.874509803921569,
+        -69.999, 0.513725490196078, 0.631372549019608,0.901960784313726,
+        -70, 0.513725490196078, 0.631372549019608,0.901960784313726,
+        -19.999, 0.643137254901961, 0.752941176470588,0.941176470588235,
+        -20, 0.643137254901961, 0.752941176470588,0.941176470588235,
+        0.001, 0.666666666666667, 0.784313725490196,1,
+        0, 0, 0.380392156862745,0.27843137254902,
+        50.001, 0.0627450980392157, 0.47843137254902,0.184313725490196,
+        50, 0.0627450980392157, 0.47843137254902,0.184313725490196,
+        500.001, 0.909803921568627, 0.843137254901961,0.490196078431373,
+        500, 0.909803921568627, 0.843137254901961,0.490196078431373,
+        1200.001, 0.631372549019608, 0.262745098039216,0,
+        1200, 0.631372549019608, 0.262745098039216,0,
+        1700.001, 0.509803921568627, 0.117647058823529,0.117647058823529,
+        1700, 0.509803921568627, 0.117647058823529,0.117647058823529,
+        2800.001, 0.431372549019608, 0.431372549019608,0.431372549019608,
+        2800, 0.431372549019608, 0.431372549019608,0.431372549019608,
+        4000.001, 1, 1, 1,
+        4000, 1, 1, 1,
+        6000.001, 1, 1, 1
+        ]
+
       LUT.ScalarRangeInitialized = 1.0
 
-      # Show surface and colour by field value (which is cell data) using lookup table
-      sphereDisplay = pvs.Show(slice, renderView)
+      # Show topo data
+      sphereDisplay = pvs.Show(toposcaled, renderView)
       sphereDisplay.Representation = 'Surface'
-      sphereDisplay.ColorArrayName = ['CELLS', fieldname]
+      sphereDisplay.ColorArrayName = ['POINTS', 'altitude']
       sphereDisplay.LookupTable = LUT
       sphereDisplay.Opacity = 1.0
 
-      # Show coastlines
-      sphereDisplay = pvs.Show(clinesscaled, renderView)
+      # Show surface and colour by field value (which is cell data) using lookup table
+      sphereDisplay = pvs.Show(contours, renderView)
       sphereDisplay.Representation = 'Surface'
       sphereDisplay.Opacity = 1.0
 
@@ -114,7 +145,7 @@ def CreateCoProcessor():
       self.Pipeline = _CreatePipeline(self, datadescription)
 
   coprocessor = CoProcessor()
-  freqs = {'input': [1]}
+  freqs = {'input': [1,1,1]}
   coprocessor.SetUpdateFrequencies(freqs)
   return coprocessor
 
