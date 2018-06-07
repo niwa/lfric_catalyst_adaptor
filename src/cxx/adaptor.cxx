@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <vtkCPDataDescription.h>
 #include <vtkCPInputDataDescription.h>
 #include <vtkSmartPointer.h>
@@ -21,6 +22,103 @@
 // We need to access the dataDescription object defined in the coprocessor API
 extern vtkCPDataDescription * dataDescription;
 
+// This function mirrors points in periodic grids, where boundary cells reach
+// to the opposite boundary. Works both for serial and parallel runs with
+// grid partitioning. In the latter case, vertices (points) that are shared
+// between partitions will be mirrored separately in each partition.
+void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid) {
+
+  // Compute xy grid dimensions
+  double gridBounds[6];
+  grid->GetBounds(gridBounds);
+  double gridDx = gridBounds[1] - gridBounds[0];
+  double gridDy = gridBounds[3] - gridBounds[2];
+
+  // Need to keep track of points that have already been duplicated,
+  // to avoid degenerate points
+  std::unordered_map<vtkIdType, vtkIdType> mirrorPointsX;
+  std::unordered_map<vtkIdType, vtkIdType> mirrorPointsY;
+  std::unordered_map<vtkIdType, vtkIdType> mirrorPointsXY;
+  std::unordered_map<vtkIdType, vtkIdType>::const_iterator mirrorPointsIt;
+
+  vtkPoints * gridPoints = grid->GetPoints();
+  vtkSmartPointer<vtkIdList> oldCellPoints = vtkSmartPointer<vtkIdList>::New();
+
+  // Search entire grid
+  for (vtkIdType cellId = 0; cellId < grid->GetNumberOfCells(); cellId++) {
+
+    // Compute xy cell dimensions
+    double cellBounds[6];
+    grid->GetCellBounds(cellId, cellBounds);
+    double cellDx = cellBounds[1] - cellBounds[0];
+    double cellDy = cellBounds[3] - cellBounds[2];
+
+    // Find cells that span across the grid
+    bool spanX = cellDx > 0.5*gridDx;
+    bool spanY = cellDy > 0.5*gridDy;
+
+    if (spanX or spanY) {
+
+      grid->GetCellPoints(cellId, oldCellPoints);
+
+      vtkIdType newCellPoints[8];
+
+      // Check each cell vertex and mirror if needed
+      for (vtkIdType pointIdIndex = 0; pointIdIndex < 8; pointIdIndex++) {
+
+	vtkIdType thisPointId = oldCellPoints->GetId(pointIdIndex);
+	double thisPointCoords[3];
+	grid->GetPoint(thisPointId, thisPointCoords);
+
+	// Mirror corner point
+	if (spanX and spanY and thisPointCoords[0] < 0 and thisPointCoords[1] < 0) {
+	  // Keep track of mirrored points to avoid degeneracy; insert a new point if
+	  // no mirror point has been created yet
+	  mirrorPointsIt = mirrorPointsXY.find(thisPointId);
+	  if (mirrorPointsIt == mirrorPointsXY.end()) {
+	    vtkIdType newPointId = gridPoints->InsertNextPoint(-thisPointCoords[0], -thisPointCoords[1], thisPointCoords[2]);
+            mirrorPointsXY.insert({thisPointId, newPointId});
+            newCellPoints[pointIdIndex] = newPointId;   
+	  }
+          else {
+            newCellPoints[pointIdIndex] = mirrorPointsIt->second;
+          }
+	}
+	// Mirror point on left domain boundary
+	else if (spanX && thisPointCoords[0] < 0) {
+          mirrorPointsIt = mirrorPointsX.find(thisPointId);
+	  if (mirrorPointsIt == mirrorPointsX.end()) {
+	    vtkIdType newPointId = gridPoints->InsertNextPoint(-thisPointCoords[0], thisPointCoords[1], thisPointCoords[2]);
+            mirrorPointsX.insert({thisPointId, newPointId});
+            newCellPoints[pointIdIndex] = newPointId;   
+	  }
+          else {
+            newCellPoints[pointIdIndex] = mirrorPointsIt->second;
+          }
+	}
+	// Mirror points on bottom domain boundary
+	else if (spanY && thisPointCoords[1] < 0) {
+          mirrorPointsIt = mirrorPointsY.find(thisPointId);
+	  if (mirrorPointsIt == mirrorPointsY.end()) {
+	    vtkIdType newPointId = gridPoints->InsertNextPoint(thisPointCoords[0], -thisPointCoords[1], thisPointCoords[2]);
+            mirrorPointsY.insert({thisPointId, newPointId});
+            newCellPoints[pointIdIndex] = newPointId;   
+	  }
+          else {
+            newCellPoints[pointIdIndex] = mirrorPointsIt->second;
+          }
+	}
+	// No mirror point needed
+	else {
+	  newCellPoints[pointIdIndex] = thisPointId;
+	}
+
+      }
+      grid->ReplaceCell(cellId, 8, newCellPoints);
+    }
+  }
+}
+
 extern "C" {
 
   // Create a new VTK grid and register it with the coprocessor. Catalyst
@@ -33,9 +131,11 @@ extern "C" {
   // ncells: number of cells in grid
   // ghost_mask: mask array for ghost cells
   // use_ghost_mask: flag for including model ghost cells in VTK grid
+  // mirror_periodic: flag for periodic grids which require replication of points
   void adaptor_creategrid(const double * point_coords, const long npoints,
                           const long * cell_points, const long ncells,
-                          const short * ghost_mask, const short use_ghost_mask) {
+                          const short * ghost_mask, const short use_ghost_mask,
+                          const short mirror_periodic) {
 
     if (!dataDescription) {
       vtkGenericWarningMacro("adaptor_creategrid: Unable to access dataDescription.");
@@ -108,6 +208,12 @@ extern "C" {
 	}
       }
 
+    }
+
+    // Mirror points in periodic grids, cells will otherwise span across
+    // the entire extent of the grid
+    if (mirror_periodic) {
+      mirror_points(grid);
     }
 
     // Register grid with the coprocessor
