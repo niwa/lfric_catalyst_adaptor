@@ -1,24 +1,15 @@
 import paraview.simple as pvs
 from paraview import coprocessing as cp
-import vtk
-from vtk.util import numpy_support as vtknps
-import numpy as np
+import math
 
 #
 # ParaView Catalyst pipeline for extracting a 2D meridional slice
 # of the 3D mesh and storing it as VTK unstructured grid data for
 # further analysis with ParaView or Python, along with data fields.
-# Coordinate transformation is computed using NumPy, which should
-# be reasonably fast.
 #
 # A list of available filters and writers can be found here:
 # https://www.paraview.org/ParaView/Doc/Nightly/www/py-doc/\
 # paraview.servermanager_proxies.html
-#
-
-#
-# IMPORTANT NOTE: for low resolution cubed-sphere grids, the output
-#                 of this pipeline may look warped at certain longitudes
 #
 
 #
@@ -35,34 +26,6 @@ longitude = 5
 # Switch for writing full model output
 write_full_output = True
 
-# Switch for converting Cartesian coordinate to
-# latitudes and radii
-convert_to_lat_rad = True
-
-# ----------------------------------------------------------------------
-
-# Convert longitude to radians
-lon_rad = longitude/180.0*np.pi
-
-def xyz2latrad(xyz):
-  xysq = xyz[:,0]**2 + xyz[:,1]**2
-  llr = np.empty_like(xyz)
-
-  # Latitude in degrees
-  llr[:,0] = np.where(xysq == 0,
-                      0.5*np.pi*np.sign(xyz[:,2]),
-                      np.arctan2(xyz[:,2], np.sqrt(xysq)))
-  llr[:,0] *= 180.0/np.pi
-  # Longitude - set to zero
-  llr[:,1] = 0
-  # Radius - normalise
-  llr[:,2] = np.sqrt(xysq + xyz[:,2]**2)
-  radius_range = [np.min(llr[:,2]), np.max(llr[:,2])]
-  llr[:,2] -= radius_range[0]
-  llr[:,2] *= 90.0/(radius_range[1] - radius_range[0])
-
-  return llr
-
 # ----------------------- CoProcessor definition -----------------------
 
 def CreateCoProcessor():
@@ -77,49 +40,20 @@ def CreateCoProcessor():
                                                     CompressorType="ZLib")
         coprocessor.RegisterWriter(fullWriter, filename='full_output_%t.pvtu', freq=1)
 
-      # Create a plane slice with the normal perpendicular
-      # to the desired longitude
+      # Determine grid bounds
+      gridBounds = grid.GetClientSideObject().GetOutputDataObject(0).GetBounds()
+
+      # Plane slice at the desired longitude
       slice = pvs.Slice(Input=grid)
       slice.SliceType = 'Plane'
       slice.Triangulatetheslice = 0
       slice.SliceOffsetValues = [0.0]
-      slice.SliceType.Origin = [0,0,0]
-      slice.SliceType.Normal = [-np.sin(lon_rad), np.cos(lon_rad), 0]
+      slice.SliceType.Origin = [longitude/180.0*math.pi, 0, gridBounds[4]]
+      slice.SliceType.Normal = [1, 0, 0]
 
-      # Clip the slice so that the hemisphere remains that
-      # contains the desired longitude
-      hemisphere = pvs.Clip(Input=slice)
-      hemisphere.ClipType = 'Plane'
-      hemisphere.ClipType.Origin = [0,0,0]
-      hemisphere.ClipType.Normal = [np.cos(lon_rad), np.sin(lon_rad), 0]
-      hemisphere.Crinkleclip = 0
-
-      # We now switch from ParaView to plain VTK to transform
-      # xyz to lon-rad coordinates if required. Note that this
-      # could also be done in ParaView itself using the
-      # Calculator filter - this may be the method of choice
-      # when running the pipeline on a remote ParaView Server.
-
-      # Run the pipeline first to instantiate all objects and
-      # retrieve its vtkUnstructuredGrid output.
-      # Note that this may not work when using a remote server.
-      hemisphere.UpdatePipeline()
-      data = hemisphere.GetClientSideObject().GetOutputDataObject(0)
-
-      # Coordinate conversion for all vertices
-      if (convert_to_lat_rad == True):
-        points = data.GetPoints()
-        newPoints = vtk.vtkPoints()
-        latradcoords = xyz2latrad(vtknps.vtk_to_numpy(points.GetData()))
-        newPoints.SetData(vtknps.numpy_to_vtk(latradcoords))
-        data.SetPoints(newPoints)
-
-      # Back to ParaView:
-      # Create new writer and set its input to the VTK data object, then
-      # register it with the coprocessor
-      sliceWriter = pvs.XMLPUnstructuredGridWriter(DataMode="Appended", CompressorType="ZLib")
-      sliceWriter.GetClientSideObject().SetInputDataObject(data)
-      coprocessor.RegisterWriter(sliceWriter, filename='meridional_slice_%t.pvtu', freq=1)
+      # Create new writer
+      sliceWriter = pvs.XMLPPolyDataWriter(Input=slice, DataMode="Appended", CompressorType="ZLib")
+      coprocessor.RegisterWriter(sliceWriter, filename='meridional_slice_%t.pvtp', freq=1)
 
     return Pipeline()
 
