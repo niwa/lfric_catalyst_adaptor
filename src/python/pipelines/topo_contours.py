@@ -27,7 +27,7 @@ from paraview import coprocessing as cp
 sphere_radius = 6371230
 
 # Values at which contours shall be produced
-contour_values = [1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.4, 1.45, 15]
+contour_values = [1.20, 1.25, 1.3, 1.35, 1.4, 1.45, 1.485]
 
 # ----------------------- CoProcessor definition -----------------------
 
