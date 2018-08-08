@@ -23,16 +23,16 @@ class vtkCPVTKPipeline : public vtkCPPipeline {
 
   // Standard VTK members
   static vtkCPVTKPipeline* New();
-  virtual void PrintSelf(ostream& os, vtkIndent indent);
+  void PrintSelf(ostream& os, vtkIndent indent) override;
   vtkTypeMacro(vtkCPVTKPipeline,vtkCPPipeline);
 
-  // Our class implements these two Catalyst coprocessor API functions
-  virtual int RequestDataDescription(vtkCPDataDescription* dataDescription);
-  virtual int CoProcess(vtkCPDataDescription* dataDescription);
+  // Our class implements these two virtual Catalyst coprocessor API functions
+  int RequestDataDescription(vtkCPDataDescription* dataDescription) override;
+  int CoProcess(vtkCPDataDescription* dataDescription) override;
 
   // Set basic parameters of the visualisation pipeline
-  virtual void SetVTKPipelineParameters(const int outputFrequency, const std::string& fileName,
-                                        const int mpiRank, const int mpiSize);
+  void SetVTKPipelineParameters(const int outputFrequency, const std::string& fileName,
+                                const int mpiRank, const int mpiSize);
 
  protected:
   vtkCPVTKPipeline();

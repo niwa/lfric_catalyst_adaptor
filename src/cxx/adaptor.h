@@ -1,9 +1,10 @@
 #ifndef ADAPTOR_H
 #define ADAPTOR_H
 
+#ifdef __cplusplus
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
-
+#endif
 
 //
 // Create Catalyst adaptor
@@ -16,13 +17,17 @@
 // data. The implementation uses VTK's smart pointers and stores the
 // VTK grid and data to avoid scope issues and memory leaks.
 
+#ifdef __cplusplus
 // This function mirrors points in periodic grids, where boundary cells reach
 // to the opposite boundary. Works both for serial and parallel runs with
 // grid partitioning. In the latter case, vertices (points) that are shared
 // between partitions will be mirrored separately in each partition.
 void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid);
+#endif
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
   // Create a new VTK grid and register it with the coprocessor. Catalyst
   // supports several grids ("inputs"), but only one is used here.
@@ -49,6 +54,8 @@ extern "C" {
   void adaptor_copyfield(const char * fieldname, const int fieldtype, const int ncomponents,
 			 const long ntuples, const double * fieldvalues);
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif

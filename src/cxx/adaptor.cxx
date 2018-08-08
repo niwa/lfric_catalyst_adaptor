@@ -1,12 +1,13 @@
 #include "adaptor.h"
 #include "coprocessor.h"
 
-#include <unordered_map>
 #include <vtkCPInputDataDescription.h>
 #include <vtkDoubleArray.h>
 #include <vtkCellType.h>
 #include <vtkCellData.h>
 #include <vtkUnsignedCharArray.h>
+
+#include <unordered_map>
 
 void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid) {
 
@@ -154,7 +155,7 @@ extern "C" {
     // We need memory for storing 8 points and cell type for each cell
     grid->Allocate(static_cast<vtkIdType>(ncells*9));
 
-    for(size_t cell = 0; cell < ncells; cell++) {
+    for(long cell = 0; cell < ncells; cell++) {
       vtkIdType thiscell[8] = {cell_points[cell*8  ], cell_points[cell*8+1], cell_points[cell*8+2], cell_points[cell*8+3],
 			       cell_points[cell*8+4], cell_points[cell*8+5], cell_points[cell*8+6], cell_points[cell*8+7]};
       grid->InsertNextCell(VTK_HEXAHEDRON, 8, thiscell);
