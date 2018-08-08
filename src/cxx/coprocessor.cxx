@@ -1,27 +1,14 @@
-#include <string>
-#include <mpi.h>
+#include "coprocessor.h"
+#include "vtk_pipeline.h"
 
 #include <vtkMPI.h>
-#include <vtkCPProcessor.h>
 #include <vtkCPPipeline.h>
 #include <vtkCPPythonScriptPipeline.h>
-#include <vtkCPDataDescription.h>
 #include <vtkCPInputDataDescription.h>
 #include <vtkSmartPointer.h>
 
-#include "vtk_pipeline.h"
+#include <string>
 
-//
-// Coprocessor interface for a Fortran code
-//
-
-// We define our own C-style API rather than using Catalyst's "CPAdaptorAPI"
-// layer, to get access to features such as custom MPI communicators.
-//
-// The API is used for talking to Catalyst, register our visualisation pipeline etc.
-// Users can choose between a C++ pipeline and a scripted Python pipeline.
-
-// We need to keep track of the coprocessor and simulation data states
 vtkCPProcessor * Processor = NULL;
 vtkCPDataDescription * dataDescription = NULL;
 

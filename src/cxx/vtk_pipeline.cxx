@@ -1,5 +1,4 @@
-#include <string>
-#include <sstream>
+#include "vtk_pipeline.h"
 
 #include <vtkCPDataDescription.h>
 #include <vtkCPInputDataDescription.h>
@@ -10,19 +9,9 @@
 #include <vtkCompleteArrays.h>
 #include <vtkXMLPUnstructuredGridWriter.h>
 
-#include "vtk_pipeline.h"
-
 #include <mpi.h>
-
-//
-// Create visualisation pipeline
-//
-
-// The pipeline is implemented by deriving from base class
-// "vtkCPPipeline". It therefore needs to implement the
-// "RequestDataDescription" and "CoProcess" methods that Catalyst
-// will call to work out if visualisation output is needed, and
-// to run the visualisation pipeline.
+#include <string>
+#include <sstream>
 
 // Insert standard implementation of "New"
 vtkStandardNewMacro(vtkCPVTKPipeline);

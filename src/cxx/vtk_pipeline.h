@@ -4,11 +4,18 @@
 #include <vtkCPPipeline.h>
 #include <string>
 
+//
+// Create visualisation pipeline
+//
+
 // This class extends the generic vtkCPPipeline interface
 // class to define the coprocessing pipeline, create the
 // logic that decides if the coprocessor should run, and
-// additional coprocessor configuration.
-//
+// additional coprocessor configuration. It therefore needs
+// to implement the "RequestDataDescription" and "CoProcess"
+// methods that Catalyst will call to work out if visualisation
+// output is needed, and to run the visualisation pipeline.
+
 // Class definition follows the C++ pipeline example in the
 // Catalyst source code
 class vtkCPVTKPipeline : public vtkCPPipeline {
