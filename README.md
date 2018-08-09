@@ -22,6 +22,10 @@ cmake .. -DCMAKE_CXX_COMPILER=CC -DCMAKE_Fortran_COMPILER=ftn -DCMAKE_EXE_LINKER
 ```
 Note that dynamic linking simplifies the linking process of the Fortran application significantly.
 
+## Running the test battery
+
+If you want to test your build, add ```-DBUILD_TESTING=ON``` to your CMake configuration and run ```ctest``` after building the code. This will run a number of tests that check basic functionality.
+
 ## Running a simulation with the adaptor
 
 The Catalyst adaptor and libraries are usually dynamically linked. If the build system of your code does not hardcode shared library paths, you will need to set (possibly adapting ParaView version)
