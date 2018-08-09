@@ -84,10 +84,22 @@ extern "C" {
   void coprocessor_requestdatadescription(int * timeStep, double * time, int * coprocessThisTimeStep) {
     if (!Processor) {
       vtkGenericWarningMacro("coprocessor_requestdatadescription: Unable to access Processor.");
+      *coprocessThisTimeStep = 0;
       return;
     }
     if (!dataDescription) {
       vtkGenericWarningMacro("coprocessor_requestdatadescription: Unable to access dataDescription.");
+      *coprocessThisTimeStep = 0;
+      return;
+    }
+    if (*timeStep < 0) {
+      vtkGenericWarningMacro("coprocessor_requestdatadescription: Invalid value for timeStep.");
+      *coprocessThisTimeStep = 0;
+      return;
+    }
+    if (*time < 0.0) {
+      vtkGenericWarningMacro("coprocessor_requestdatadescription: Invalid value for time.");
+      *coprocessThisTimeStep = 0;
       return;
     }
     // Check if anything needs to be done for this simulation time and timeStep
@@ -98,14 +110,17 @@ extern "C" {
   void coprocessor_needtocreategrid(int * needGrid) {
     if (!Processor) {
       vtkGenericWarningMacro("coprocessor_needtocreategrid: Unable to access Processor.");
+      *needGrid = 0;
       return;
     }
     if (!dataDescription) {
       vtkGenericWarningMacro("coprocessor_needtocreategrid: Unable to access dataDescription.");
+      *needGrid = 0;
       return;
     }
     if (dataDescription->GetNumberOfInputDescriptions() != 1) {
       vtkGenericWarningMacro("coprocessor_needtocreategrid: expected exactly 1 input description.");
+      *needGrid = 0;
       return;
     }
     // Check if a grid has already been registered with our inputDescription
