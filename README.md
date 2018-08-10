@@ -11,20 +11,27 @@ Once this is done, build the code using CMake as follows:
 ```
 mkdir build
 cd build
-cmake .. -DParaView_DIR=/path/to/catalyst/install/directory/lib/cmake/paraview-5.4
+cmake .. -DParaView_DIR=/path/to/catalyst/install/directory/lib/cmake/paraview-5.4 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install/dir
 make
 ```
 If you want to build a debug version of the code, add ```-DCMAKE_BUILD_TYPE=Debug``` to the CMake configuration, or use the ```ccmake``` configuration tool. You can add additional compiler flags using the ```-DCMAKE_CXX_FLAGS=``` option.
 
 On a Cray XC50 system, the following build setup should work:
 ```
-cmake .. -DCMAKE_CXX_COMPILER=CC -DCMAKE_Fortran_COMPILER=ftn -DCMAKE_EXE_LINKER_FLAGS=-dynamic -DParaView_DIR=/path/to/catalyst/install/directory/lib/cmake/paraview-5.4
+cmake .. -DCMAKE_CXX_COMPILER=CC -DCMAKE_EXE_LINKER_FLAGS=-dynamic -DParaView_DIR=/path/to/catalyst/install/directory/lib/cmake/paraview-5.4 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/path/to/install/dir
 ```
 Note that dynamic linking simplifies the linking process of the Fortran application significantly.
 
+Once CMake has finished, run
+```
+make
+make install
+```
+to build and install the library.
+
 ## Running the test battery
 
-If you want to test your build, add ```-DBUILD_TESTING=ON``` to your CMake configuration and run ```ctest``` after building the code. This will run a number of tests that check basic functionality.
+If you want to test your build, add ```-DBUILD_TESTING=ON``` to your CMake configuration and run ```make test``` or ```ctest``` after building the code. This will run a number of tests that check basic functionality.
 
 ## Running a simulation with the adaptor
 
