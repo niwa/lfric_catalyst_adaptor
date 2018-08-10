@@ -20,6 +20,8 @@ else()
   include_directories(${MPI_CXX_INCLUDE_PATH})
 endif()
 
+install(TARGETS catalyst_adaptor LIBRARY DESTINATION lib)
+
 option(BUILD_TESTING "Build Testing" OFF)
 if(BUILD_TESTING)
   include(CTest)
