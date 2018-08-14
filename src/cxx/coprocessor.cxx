@@ -9,8 +9,8 @@
 
 #include <string>
 
-vtkCPProcessor * Processor = NULL;
-vtkCPDataDescription * dataDescription = NULL;
+vtkCPProcessor * Processor = nullptr;
+vtkCPDataDescription * dataDescription = nullptr;
 
 extern "C" {
 
@@ -150,11 +150,11 @@ extern "C" {
     if (Processor) {
       Processor->Finalize();
       Processor->Delete();
-      Processor = NULL;
+      Processor = nullptr;
     }
     if (dataDescription) {
       dataDescription->Delete();
-      dataDescription = NULL;
+      dataDescription = nullptr;
     }
   }
 

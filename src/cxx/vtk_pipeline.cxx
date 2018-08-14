@@ -66,7 +66,7 @@ int vtkCPVTKPipeline::RequestDataDescription(vtkCPDataDescription* dataDescripti
 int vtkCPVTKPipeline::CoProcess(vtkCPDataDescription* dataDescription) {
 
   if(!dataDescription) {
-    vtkWarningMacro("vtk_pipeline: CoProcess: DataDescription is NULL");
+    vtkWarningMacro("vtk_pipeline: CoProcess: DataDescription is nullptr");
     return 0;
   }
 

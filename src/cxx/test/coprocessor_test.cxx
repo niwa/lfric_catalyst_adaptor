@@ -8,8 +8,8 @@
 TEST_CASE( "C++ coprocessor initialised", "[coprocessor]" ) {
 
   // Objects must be allocated if initialisation was successful
-  REQUIRE ( Processor != NULL );
-  REQUIRE ( dataDescription != NULL );
+  REQUIRE ( Processor != nullptr );
+  REQUIRE ( dataDescription != nullptr );
 
 }
 
@@ -77,6 +77,6 @@ TEST_CASE( "C++ coprocessor NeedToCreateGrid works", "[coprocessor]" ) {
   // Clean up test object and restore original one
   dataDescription->Delete();
   dataDescription = dataDescription_save;
-  dataDescription_save = NULL;
+  dataDescription_save = nullptr;
 
 }

@@ -30,14 +30,16 @@ class TestGridDef {
     }
 
     ~TestGridDef () {
-      delete coords;
-      delete cell_points;
-      delete ghost_mask;
+      delete[] coords;
+      delete[] cell_points;
+      delete[] ghost_mask;
     }
+
 };
 
 // Return a simple grid definition object with one cell
-TestGridDef * NewSingleCellGrid() {
+// marked as a ghost cell
+TestGridDef NewSingleCellGrid() {
   double coords[] = {0.0, 0.0, 0.0,
                      1.0, 0.0, 0.0,
                      1.0, 1.0, 0.0,
@@ -47,9 +49,8 @@ TestGridDef * NewSingleCellGrid() {
                      1.0, 1.0, 1.0,
                      0.0, 1.0, 1.0};
   long cell_points[] = {0, 1, 2, 3, 4, 5, 6, 7};
-  short ghost_mask[] = {0};
-  TestGridDef * griddef = new TestGridDef(8, 1, coords, cell_points, ghost_mask);
-  return griddef;
+  short ghost_mask[] = {1};
+  return TestGridDef(8, 1, coords, cell_points, ghost_mask);
 }
 
 // ------------------------------------------------------------------------------------------
@@ -63,38 +64,57 @@ TEST_CASE( "Adaptor CreateGrid with single cell grid", "[coprocessor]" ) {
   dataDescription->AddInput("input");
 
   // Get a simple grid with a single cell
-  TestGridDef * griddef = NewSingleCellGrid();
-  short use_ghost_mask = 0;
+  TestGridDef griddef = NewSingleCellGrid();
   short mirror_periodic = 0;
 
-  // Call CreateGrid function
-  adaptor_creategrid(griddef->coords, griddef->npoints, griddef->cell_points, griddef->ncells,
-                     griddef->ghost_mask, use_ghost_mask, mirror_periodic);
+  SECTION( "Basic tests") {
 
-  delete griddef;
+    short use_ghost_mask = 0;
 
-  vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
-  vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
-  REQUIRE( grid != NULL );
-  REQUIRE( grid->GetNumberOfCells() == 1 );
-  REQUIRE( grid->GetCellType(0) == VTK_HEXAHEDRON );
-  REQUIRE( grid->HasAnyGhostCells() == 0 );
+    // Call CreateGrid function
+    adaptor_creategrid(griddef.coords, griddef.npoints, griddef.cell_points, griddef.ncells,
+                       griddef.ghost_mask, use_ghost_mask, mirror_periodic);
 
-  vtkPoints * gridPoints = grid->GetPoints();
-  REQUIRE( gridPoints->GetNumberOfPoints() == 8 );
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
+    vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
+    REQUIRE( grid != nullptr );
+    REQUIRE( grid->IsTypeOf("vtkUnstructuredGrid") == 1 );
+    REQUIRE( grid->GetNumberOfCells() == 1 );
+    REQUIRE( grid->GetCellType(0) == VTK_HEXAHEDRON );
+    REQUIRE( grid->HasAnyGhostCells() == false );
 
-  double gridBounds[6];
-  grid->GetBounds(gridBounds);
-  REQUIRE( gridBounds[0] == Approx(0.0) );
-  REQUIRE( gridBounds[1] == Approx(1.0) );
-  REQUIRE( gridBounds[2] == Approx(0.0) );
-  REQUIRE( gridBounds[3] == Approx(1.0) );
-  REQUIRE( gridBounds[4] == Approx(0.0) );
-  REQUIRE( gridBounds[5] == Approx(1.0) );
+    vtkPoints * gridPoints = grid->GetPoints();
+    REQUIRE( gridPoints->GetNumberOfPoints() == 8 );
+
+    double gridBounds[6];
+    grid->GetBounds(gridBounds);
+    REQUIRE( gridBounds[0] == Approx(0.0) );
+    REQUIRE( gridBounds[1] == Approx(1.0) );
+    REQUIRE( gridBounds[2] == Approx(0.0) );
+    REQUIRE( gridBounds[3] == Approx(1.0) );
+    REQUIRE( gridBounds[4] == Approx(0.0) );
+    REQUIRE( gridBounds[5] == Approx(1.0) );
+
+  }
+
+  SECTION( "Check ghost cells" ) {
+
+    short use_ghost_mask = 1;
+
+    // Call CreateGrid function
+    adaptor_creategrid(griddef.coords, griddef.npoints, griddef.cell_points, griddef.ncells,
+                       griddef.ghost_mask, use_ghost_mask, mirror_periodic);
+
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
+    vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
+
+    REQUIRE( grid->HasAnyGhostCells() == true );
+
+  }
 
   // Clean up test object and restore original one
   dataDescription->Delete();
   dataDescription = dataDescription_save;
-  dataDescription_save = NULL;
+  dataDescription_save = nullptr;
 
 }
