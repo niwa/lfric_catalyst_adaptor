@@ -19,6 +19,8 @@ vtkStandardNewMacro(vtkCPVTKPipeline);
 // Constructor and desctructor
 vtkCPVTKPipeline::vtkCPVTKPipeline(){
   this->OutputFrequency = 0;
+  std::string fileName("catalyst_output.vtk");
+  this->FileName = fileName;
   this->MPIRank = 0;
   this->MPISize = 1;
 }
@@ -32,6 +34,11 @@ void vtkCPVTKPipeline::SetVTKPipelineParameters(const int outputFrequency, const
   this->MPIRank = mpiRank;
   this->MPISize = mpiSize;
 }
+
+int vtkCPVTKPipeline::GetVTKPipelineOutputFrequency() {return this->OutputFrequency;};
+std::string vtkCPVTKPipeline::GetVTKPipelineFileName() {return this->FileName;};
+int vtkCPVTKPipeline::GetVTKPipelineMPIRank() {return this->MPIRank;};
+int vtkCPVTKPipeline::GetVTKPipelineMPISize() {return this->MPISize;};
 
 // Callback function: work out if we should produce output for this call
 // and let Catalyst know by returning 1 (yes) or 0 (no)
@@ -54,7 +61,8 @@ int vtkCPVTKPipeline::RequestDataDescription(vtkCPDataDescription* dataDescripti
 
   // Check if we need to produce output (either forced or via regular request)
   if(dataDescription->GetForceOutput() == true ||
-    (this->OutputFrequency != 0 && dataDescription->GetTimeStep() % this->OutputFrequency == 0) ) {
+    (this->OutputFrequency > 0 && dataDescription->GetTimeStep() >= 0 &&
+     dataDescription->GetTimeStep() % this->OutputFrequency == 0) ) {
     dataDescription->GetInputDescription(0)->AllFieldsOn();
     dataDescription->GetInputDescription(0)->GenerateMeshOn();
     return 1;
@@ -71,8 +79,12 @@ int vtkCPVTKPipeline::CoProcess(vtkCPDataDescription* dataDescription) {
   }
 
   // Try to get grid
-  vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(
-    dataDescription->GetInputDescriptionByName("input")->GetGrid());
+  vtkCPInputDataDescription * inputDataDescription = dataDescription->GetInputDescriptionByName("input");
+  if(!inputDataDescription) {
+    vtkWarningMacro("vtk_pipeline: CoProcess: DataDescription is missing InputDescription with name input.");
+    return 0;
+  }
+  vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(inputDataDescription->GetGrid());
   if(!grid) {
     vtkWarningMacro("vtk_pipeline: CoProcess: DataDescription is missing input unstructured grid.");
     return 0;

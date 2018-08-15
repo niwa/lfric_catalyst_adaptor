@@ -34,6 +34,11 @@ class vtkCPVTKPipeline : public vtkCPPipeline {
   void SetVTKPipelineParameters(const int outputFrequency, const std::string& fileName,
                                 const int mpiRank, const int mpiSize);
 
+  int GetVTKPipelineOutputFrequency();
+  std::string GetVTKPipelineFileName();
+  int GetVTKPipelineMPIRank();
+  int GetVTKPipelineMPISize();
+
  protected:
   vtkCPVTKPipeline();
   virtual ~vtkCPVTKPipeline();
