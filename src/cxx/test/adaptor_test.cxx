@@ -5,6 +5,7 @@
 #include <vtkCPInputDataDescription.h>
 #include <vtkCellType.h>
 #include <vtkDoubleArray.h>
+#include <vtkCellData.h>
 
 // Class for defining test grids using points and connectivities
 class TestGridDef {
@@ -120,7 +121,7 @@ TestGridDef NewNineCellBiPeriodicGrid() {
 
 // ------------------------------------------------------------------------------------------
 
-TEST_CASE( "Adaptor CreateGrid with single cell grid", "[coprocessor]" ) {
+TEST_CASE( "Adaptor CreateGrid with single cell grid", "[adaptor]" ) {
 
   // Keep the original dataDescription object and
   // create a second one for this test
@@ -184,7 +185,7 @@ TEST_CASE( "Adaptor CreateGrid with single cell grid", "[coprocessor]" ) {
 
 }
 
-TEST_CASE( "Adaptor mirror_points with six cell periodic grid", "[coprocessor]" ) {
+TEST_CASE( "Adaptor mirror_points with six cell periodic grid", "[adaptor]" ) {
 
   TestGridDef griddef = NewSixCellPeriodicGrid();
 
@@ -259,7 +260,7 @@ TEST_CASE( "Adaptor mirror_points with six cell periodic grid", "[coprocessor]" 
   }
 }
 
-TEST_CASE( "Adaptor mirror_points with nine cell biperiodic grid", "[coprocessor]" ) {
+TEST_CASE( "Adaptor mirror_points with nine cell biperiodic grid", "[adaptor]" ) {
 
   TestGridDef griddef = NewNineCellBiPeriodicGrid();
 
@@ -332,4 +333,109 @@ TEST_CASE( "Adaptor mirror_points with nine cell biperiodic grid", "[coprocessor
 
     }
   }
+}
+
+TEST_CASE( "Adaptor CopyField  with six cell grid", "[adaptor]" ) {
+
+  // Keep the original dataDescription object and
+  // create a second one for this test
+  vtkCPDataDescription * dataDescription_save = dataDescription;
+  dataDescription = vtkCPDataDescription::New();
+  dataDescription->AddInput("input");
+
+  // Create six cell grid
+  TestGridDef griddef = NewSixCellPeriodicGrid();
+  short mirror_periodic = 0;
+  short use_ghost_mask = 0;
+  adaptor_creategrid(griddef.coords, griddef.npoints, griddef.cell_points, griddef.ncells,
+                     griddef.ghost_mask, use_ghost_mask, mirror_periodic);
+
+  const char * fieldname = "testfield";
+  const int fieldtype = 1;
+
+  SECTION( "Unrequested field is rejected") {
+
+    const int ncomponents = 1;
+    double * fieldvalues = nullptr;
+    dataDescription->GetInputDescription(0)->AllFieldsOff();
+
+    adaptor_copyfield(fieldname, fieldtype, ncomponents, griddef.ncells, fieldvalues);
+
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
+    vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
+    vtkDoubleArray * dataArray = vtkDoubleArray::SafeDownCast(grid->GetCellData()->GetAbstractArray(fieldname));
+
+    REQUIRE( dataArray == nullptr );
+
+  }
+
+  SECTION( "Cell-centred scalar field") {
+
+    const int ncomponents = 1;
+    double fieldvalues[griddef.ncells];
+    for (int i = 0; i < griddef.ncells; i++) {
+      fieldvalues[i] = static_cast<double>(i);
+    }
+    dataDescription->GetInputDescription(0)->AllFieldsOn();
+
+    adaptor_copyfield(fieldname, fieldtype, ncomponents, griddef.ncells, fieldvalues);
+
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
+    vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
+
+    REQUIRE( grid->GetCellData()->GetNumberOfArrays() == 1 );
+    REQUIRE( grid->GetCellData()->GetNumberOfComponents() == 1 );
+    REQUIRE( grid->GetCellData()->GetNumberOfTuples() == griddef.ncells );
+
+    int arrayIndex = -7;
+    vtkDoubleArray * dataArray = vtkDoubleArray::SafeDownCast(grid->GetCellData()->GetAbstractArray(fieldname, arrayIndex));
+
+    REQUIRE( dataArray != nullptr );
+    REQUIRE( arrayIndex == 0 );
+
+    for (int i = 0; i < griddef.ncells; i++) {
+      double fieldvalue = dataArray->GetComponent(i, 0);
+      REQUIRE( fieldvalue == Approx(fieldvalues[i]) );
+    }
+
+  }
+
+  SECTION( "Cell-centred vector field") {
+
+    const int ncomponents = 3;
+    double fieldvalues[griddef.ncells*ncomponents];
+    for (int i = 0; i < griddef.ncells; i++) {
+      fieldvalues[i] = static_cast<double>(i);
+    }
+    dataDescription->GetInputDescription(0)->AllFieldsOn();
+
+    adaptor_copyfield(fieldname, fieldtype, ncomponents, griddef.ncells, fieldvalues);
+
+    vtkCPInputDataDescription * InputDescription = dataDescription->GetInputDescription(0);
+    vtkUnstructuredGrid * grid = vtkUnstructuredGrid::SafeDownCast(InputDescription->GetGrid());
+
+    REQUIRE( grid->GetCellData()->GetNumberOfArrays() == 1 );
+    REQUIRE( grid->GetCellData()->GetNumberOfComponents() == 3 );
+    REQUIRE( grid->GetCellData()->GetNumberOfTuples() == griddef.ncells );
+
+    int arrayIndex = -7;
+    vtkDoubleArray * dataArray = vtkDoubleArray::SafeDownCast(grid->GetCellData()->GetAbstractArray(fieldname, arrayIndex));
+
+    REQUIRE( dataArray != nullptr );
+    REQUIRE( arrayIndex == 0 );
+
+    for (int j = 0; j < ncomponents; j++) {
+      for (int i = 0; i < griddef.ncells; i++) {
+        double fieldvalue = dataArray->GetComponent(i, j);
+        REQUIRE( fieldvalue == Approx(fieldvalues[griddef.ncells*j+i]) );
+      }
+    }
+
+  }
+
+  // Clean up test object and restore original one
+  dataDescription->Delete();
+  dataDescription = dataDescription_save;
+  dataDescription_save = nullptr;
+
 }
