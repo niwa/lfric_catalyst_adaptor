@@ -61,7 +61,7 @@ void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid) {
 	  if (mirrorPointsIt == mirrorPointsXY.end()) {
 	    vtkIdType newPointId = gridPoints->InsertNextPoint(-thisPointCoords[0], -thisPointCoords[1], thisPointCoords[2]);
             mirrorPointsXY.insert({thisPointId, newPointId});
-            newCellPoints[pointIdIndex] = newPointId;   
+            newCellPoints[pointIdIndex] = newPointId;
 	  }
           else {
             newCellPoints[pointIdIndex] = mirrorPointsIt->second;
@@ -73,7 +73,7 @@ void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid) {
 	  if (mirrorPointsIt == mirrorPointsX.end()) {
 	    vtkIdType newPointId = gridPoints->InsertNextPoint(-thisPointCoords[0], thisPointCoords[1], thisPointCoords[2]);
             mirrorPointsX.insert({thisPointId, newPointId});
-            newCellPoints[pointIdIndex] = newPointId;   
+            newCellPoints[pointIdIndex] = newPointId;
 	  }
           else {
             newCellPoints[pointIdIndex] = mirrorPointsIt->second;
@@ -85,7 +85,7 @@ void mirror_points(vtkSmartPointer<vtkUnstructuredGrid> grid) {
 	  if (mirrorPointsIt == mirrorPointsY.end()) {
 	    vtkIdType newPointId = gridPoints->InsertNextPoint(thisPointCoords[0], -thisPointCoords[1], thisPointCoords[2]);
             mirrorPointsY.insert({thisPointId, newPointId});
-            newCellPoints[pointIdIndex] = newPointId;   
+            newCellPoints[pointIdIndex] = newPointId;
 	  }
           else {
             newCellPoints[pointIdIndex] = mirrorPointsIt->second;
@@ -152,8 +152,8 @@ extern "C" {
     // Define grid cells
     //
 
-    // We need memory for storing 8 points and cell type for each cell
-    grid->Allocate(static_cast<vtkIdType>(ncells*9));
+    // Get memory for storing cells
+    grid->Allocate(static_cast<vtkIdType>(ncells));
 
     for(long cell = 0; cell < ncells; cell++) {
       vtkIdType thiscell[8] = {cell_points[cell*8  ], cell_points[cell*8+1], cell_points[cell*8+2], cell_points[cell*8+3],
