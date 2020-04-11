@@ -228,7 +228,7 @@ extern "C" {
     }
 
     // Check if field is needed and copy data
-    if (InputDescription->IsFieldNeeded(fieldname)) {
+    if (InputDescription->IsFieldNeeded(fieldname,vtkDataObject::CELL)) {
       vtkSmartPointer<vtkDoubleArray> field = vtkSmartPointer<vtkDoubleArray>::New();
       // Need to set number of components *before* number of tuples to ensure
       // that a sufficient amount of memory is allocated
