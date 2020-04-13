@@ -174,8 +174,8 @@ From: ubuntu:18.04
     # Provides more recent versions than apt-get
     pip3 install cython matplotlib numpy pandas scipy Jinja2 PSyclone
 
-    # Fix PSyclone exec permission
-    chmod o+x /usr/local/bin/psyclone
+    # Set PSyclone permissions to default for usr directory
+    chmod 0755 /usr/local/bin/psyclone
 
     # Build these from source to make sure that netCDF/HDF5/GEOS system libraries are used
     pip3 install --no-binary :all: netCDF4 shapely cartopy
