@@ -1,13 +1,11 @@
-# Catalyst Adaptor
-ParaView Catalyst adaptor example for a Fortran code
+# LFRic Catalyst Adaptor
+ParaView Catalyst adaptor implementation for the LFRic code
 
 This package builds a library for visualising simulation data with a simple VTK visualisation pipeline. The pipeline can be defined either in C++ or using a Python script.
 
 ## Building the adaptor
 
-To build this code, you will need to build and install ParaView with Catalyst option enabled, or the "Catalyst-v5.4.1-Base-Enable-Python-Essentials-Extras-Rendering-Base" source code package on your system. Note that the visualisation pipelines with image rendering may require the full ParaView package to work correctly.
-
-Once this is done, build the code using CMake as follows:
+To build this code, you will need to build and install ParaView with Catalyst option enabled. Once this is done, build the code using CMake as follows:
 ```
 mkdir build
 cd build
