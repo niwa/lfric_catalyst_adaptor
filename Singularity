@@ -263,12 +263,12 @@ From: ubuntu:18.04
     # Catalyst adaptor
     #
 
-    git clone https://github.com/tinyendian/catalyst_adaptor.git
-    mkdir -p catalyst_adaptor/src/cxx/build
-    cd catalyst_adaptor/src/cxx/build
+    git clone https://github.com/niwa/lfric_catalyst_adaptor.git
+    mkdir -p lfric_catalyst_adaptor/src/cxx/build
+    cd lfric_catalyst_adaptor/src/cxx/build
     cmake .. -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local \
              -DCMAKE_C_COMPILER=mpicc -DCMAKE_CXX_COMPILER=mpiCC
     make -j 4
     make install
     cd ../../../..
-    rm -rf catalyst_adaptor
+    rm -rf lfric_catalyst_adaptor
