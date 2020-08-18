@@ -40,7 +40,7 @@ From: ubuntu:18.04
                        g++ subversion liburi-perl m4 libcurl4-gnutls-dev
 
     # Make Python3 the default Python, required by pFUnit and LFRic build systems
-    # Note that this may brake Python3-incompatible scripts
+    # Note that this may break Python3-incompatible scripts
     update-alternatives --install /usr/local/bin/python python /usr/bin/python3 10
     update-alternatives --config python
 
@@ -48,8 +48,8 @@ From: ubuntu:18.04
     # yaxt
     #
 
-    yaxt_version=0.8.1
-    yaxt_sha256=f258e289e143ee9e452885c2afbbd9279b9c51d01b0f4b886a67c88013dd9118
+    yaxt_version=0.9.0
+    yaxt_sha256=d3673e88c1cba3b77e0821393b94b5952d8ed7dc494305c8cf93e7ebec19483c
 
     # The configure script needs to run an MPI test executable which can fail if hostname is not recognised
     cp /etc/hosts /etc/hosts.bak
@@ -57,7 +57,7 @@ From: ubuntu:18.04
     echo "127.0.0.1 ${hostname_current}" > /etc/hosts
     echo "::1       ${hostname_current}" >> /etc/hosts
 
-    wget https://www.dkrz.de/redmine/attachments/download/496/yaxt-${yaxt_version}.tar.gz
+    wget https://www.dkrz.de/redmine/attachments/download/498/yaxt-${yaxt_version}.tar.gz
     echo "${yaxt_sha256} yaxt-${yaxt_version}.tar.gz" | sha256sum --check
     tar -xf yaxt-${yaxt_version}.tar.gz
     mkdir yaxt-${yaxt_version}_build
@@ -95,8 +95,8 @@ From: ubuntu:18.04
     # netCDF-Fortran with parallel HDF5
     #
 
-    ncf_version=4.5.2
-    ncf_sha256=0b05c629c70d6d224a3be28699c066bfdfeae477aea211fbf034d973a8309b49
+    ncf_version=4.5.3
+    ncf_sha256=c6da30c2fe7e4e614c1dff4124e857afbd45355c6798353eccfa60c0702b495a
 
     wget https://github.com/Unidata/netcdf-fortran/archive/v${ncf_version}.tar.gz
     echo "${ncf_sha256} v${ncf_version}.tar.gz" | sha256sum --check
@@ -198,8 +198,8 @@ From: ubuntu:18.04
 
     # Select ParaView major.minor version and patch to form "major.minor.patch"
     pv_version=5.8
-    pv_patch=0
-    pv_sha256=219e4107abf40317ce054408e9c3b22fb935d464238c1c00c0161f1c8697a3f9
+    pv_patch=1
+    pv_sha256=7653950392a0d7c0287c26f1d3a25cdbaa11baa7524b0af0e6a1a0d7d487d034
 
     # Download and verity ParaView sources
     pv_url="https://www.paraview.org/paraview-downloads/download.php"
@@ -249,7 +249,7 @@ From: ubuntu:18.04
     # LFRic Reader plugin
     #
 
-    git clone https://github.com/tinyendian/lfric_reader.git
+    git clone https://github.com/niwa/lfric_reader.git
     mkdir -p lfric_reader/src/cxx/build
     cd lfric_reader/src/cxx/build
     cmake .. -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=/usr/local \
