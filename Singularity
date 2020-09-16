@@ -21,9 +21,13 @@ From: ubuntu:18.04
     # LFRic build configs
     export FC=gfortran
     export FPP="cpp -traditional-cpp"
-    export FFLAGS="-I/usr/local/include -I/usr/include/mpich -I/usr/include"
+    export FFLAGS="-I/usr/local/include -I/usr/include/x86_64-linux-gnu/mpich -I/usr/include"
     export LDMPI=mpif90
     export LDFLAGS="-L/usr/local/lib -L/usr/lib/x86_64-linux-gnu/hdf5/mpich"
+
+    # FCM and ROSE
+    export PATH=/fcm/bin:/rose/usr/bin:$PATH
+    export ROSE_HOME=/rose
 
 %post
 
@@ -36,13 +40,18 @@ From: ubuntu:18.04
 
     apt-get install -y unzip xz-utils pkg-config git wget make cmake libmpich-dev libosmesa6-dev \
                        libtbb-dev libgeos-dev libproj-dev libhdf5-mpich-dev libudunits2-dev \
-                       python3-dev python3-pip python3-setuptools \
-                       g++ subversion liburi-perl m4 libcurl4-gnutls-dev
+                       python3-dev python3-pip python3-setuptools python2.7 python-requests \
+                       g++ subversion liburi-perl m4 libcurl4-gnutls-dev libxml-parser-perl \
+                       rsync gpg-agent psmisc
 
     # Make Python3 the default Python, required by pFUnit and LFRic build systems
     # Note that this may break Python3-incompatible scripts
     update-alternatives --install /usr/local/bin/python python /usr/bin/python3 10
     update-alternatives --config python
+
+    # Rose requires Python 2
+    update-alternatives --install /usr/local/bin/python2 python2 /usr/bin/python2.7 10
+    update-alternatives --config python2
 
     #
     # yaxt
@@ -166,6 +175,33 @@ From: ubuntu:18.04
     make install
     cd ..
     rm -r pFUnit-${pfunit_version}.tgz pFUnit-${pfunit_version}
+
+    #
+    # FCM
+    #
+
+    fcm_version=2019.09.0
+    fcm_sha256=0c291c652d6d2827a789cc326d9f2e3b2daa2a10aae7faa72d2fad3fd8a650c2
+
+    wget https://github.com/metomi/fcm/archive/${fcm_version}.tar.gz
+    echo "${fcm_sha256} ${fcm_version}.tar.gz" | sha256sum --check
+    tar -xf ${fcm_version}.tar.gz
+    ln -s fcm-${fcm_version} fcm
+    rm ${fcm_version}.tar.gz
+
+    #
+    # Rose
+    #
+
+    rose_version=2019.01.3
+    rose_sha256=ea1d75f9e1b4787af7402c990726112a760538fada9ab8198cd391ca61a11834
+
+    wget https://github.com/metomi/rose/archive/${rose_version}.tar.gz
+    echo "${rose_sha256} ${rose_version}.tar.gz" | sha256sum --check
+    tar -xf ${rose_version}.tar.gz
+    ln -s rose-${rose_version} rose
+    ln -rs rose-${rose_version}/usr/bin/rose rose-${rose_version}/usr/bin/rosie
+    rm ${rose_version}.tar.gz
 
     #
     # Python packages
