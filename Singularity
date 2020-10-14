@@ -21,7 +21,7 @@ From: ubuntu:18.04
     # LFRic build configs
     export FC=gfortran
     export FPP="cpp -traditional-cpp"
-    export FFLAGS="-I/usr/local/include -I/usr/include/x86_64-linux-gnu/mpich -I/usr/include"
+    export FFLAGS="-I/usr/local/include -I/usr/include/mpich -I/usr/include"
     export LDMPI=mpif90
     export LDFLAGS="-L/usr/local/lib -L/usr/lib/x86_64-linux-gnu/hdf5/mpich"
 
@@ -37,6 +37,10 @@ From: ubuntu:18.04
     ln -fs /usr/share/zoneinfo/UTC /etc/localtime
     apt-get install -y tzdata
     dpkg-reconfigure --frontend noninteractive tzdata
+
+    # LFRic build system requires Bash to be the default shell
+    echo "dash dash/sh boolean false" | debconf-set-selections
+    dpkg-reconfigure --frontend noninteractive dash
 
     apt-get install -y unzip xz-utils pkg-config git wget make cmake libmpich-dev libosmesa6-dev \
                        libtbb-dev libgeos-dev libproj-dev libhdf5-mpich-dev libudunits2-dev \
