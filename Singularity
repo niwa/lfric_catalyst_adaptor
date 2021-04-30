@@ -21,9 +21,10 @@ From: ubuntu:18.04
     # LFRic build configs
     export FC=gfortran
     export FPP="cpp -traditional-cpp"
-    export FFLAGS="-I/usr/local/include -I/usr/include/mpich -I/usr/include"
+    export FFLAGS="-I/usr/local/include -I/usr/include/mpich -I/usr/include -I/usr/local/mod"
     export LDMPI=mpif90
     export LDFLAGS="-L/usr/local/lib -L/usr/lib/x86_64-linux-gnu/hdf5/mpich"
+    export PFUNIT=/usr/local
 
     # FCM and ROSE
     export PATH=/fcm/bin:/rose/usr/bin:$PATH
@@ -174,6 +175,7 @@ From: ubuntu:18.04
     export F90_VENDOR=GNU
     export F90=gfortran
     export MPIF90=mpif90
+    export MPI=YES
     export INSTALL_DIR=/usr/local
     make
     make install
@@ -312,3 +314,20 @@ From: ubuntu:18.04
     make install
     cd ../../../..
     rm -rf lfric_catalyst_adaptor
+
+    #
+    # MINT regridding library
+    #
+
+    git clone https://github.com/pletzer/mint.git
+    mkdir -p mint/build
+    cd mint/build
+    cmake .. \
+    -DVTK_INCLUDE_DIR=/usr/local/include/paraview-${pv_version} \
+    -DVTK_LIBRARY_DIR=/usr/local/lib \
+    -DVTK_VERSION=pv${pv_version} \
+    -DCMAKE_INSTALL_PREFIX=/usr/local
+    make -j 4
+    make install
+    cd ../..
+    rm -rf mint
